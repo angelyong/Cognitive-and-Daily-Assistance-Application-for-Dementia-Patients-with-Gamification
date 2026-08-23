@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 
 import 'package:testproject/models/occurrence_status.dart';
+import 'package:testproject/models/streak_data.dart';
 import 'package:testproject/models/task_recurrence.dart';
 import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/services/notification_service.dart';
+import 'package:testproject/services/streak_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_text_styles.dart';
 import 'package:testproject/theme/app_decorations.dart';
@@ -80,6 +82,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
   void initState() {
     super.initState();
     _loadUserName();
+    _checkStreak();
     // Re-check task statuses every minute so overdue tasks flip to
     // "missed" automatically without the user interacting, and so the
     // "Next Up" highlight moves on as time passes.
@@ -93,6 +96,49 @@ class _PatientDashboardState extends State<PatientDashboard> {
     if (uid != null) {
       NotificationService().reconcilePatientReminders(uid);
     }
+  }
+
+  /// BUGFIX (hidden-bugs review): the daily login streak used to only be
+  /// checked inside LoginScreen's sign-in flow — meaning a patient who
+  /// simply reopens an already-running app (the normal way anyone uses a
+  /// phone; Firebase Auth sessions persist, and mobile OSes resume rather
+  /// than restart an app) would never cross the day boundary again once
+  /// logged in once. Checking here too means every dashboard open re-runs
+  /// the same day-boundary check LoginScreen already relies on.
+  /// checkAndUpdateStreak is idempotent per calendar day (see
+  /// StreakService's own guard), so calling it again right after a fresh
+  /// login already handled it today is a harmless no-op — no double
+  /// counting, no double dialog.
+  Future<void> _checkStreak() async {
+    final String? uid = _uid;
+    if (uid == null) return;
+    final StreakResult result = await StreakService().checkAndUpdateStreak(uid);
+    if (!mounted || !result.awarded) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardPurple,
+        title: Text(
+          'Day ${result.data.currentStreak} Streak!',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'You earned ${result.pointsEarned} points today.\n'
+          'Total points: ${result.data.totalPoints}',
+          style: const TextStyle(color: AppColors.textMuted),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.orangeStart,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Great!'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -248,6 +294,15 @@ class _PatientDashboardState extends State<PatientDashboard> {
   /// legacy top-level status for a single task, per-occurrence subcollection
   /// for a recurring one, or the raw stored status (no time-based logic
   /// possible) for a no-due-date "Anytime" task.
+  ///
+  /// BUGFIX (hidden-bugs review): 'missed' is now a terminal status here,
+  /// same as 'completed' already was — the toggle callback is disabled
+  /// (null) for either, instead of only for 'completed'. Previously a
+  /// missed task's tick icon was still fully wired, so tapping it called
+  /// _toggleTaskStatus/_toggleOccurrenceStatus with isCurrentlyDone=false
+  /// (since 'missed' != 'completed') and silently flipped it straight to
+  /// 'completed' (awarding points for it) — a task the missed-status sweep
+  /// had already resolved could be reopened by a single accidental tap.
   Widget _occurrenceAwareCard(
     QueryDocumentSnapshot doc,
     Map<String, dynamic> data,
@@ -260,7 +315,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
       final String stored = (data['status'] ?? 'pending') as String;
       return buildCard(
         stored,
-        stored == 'completed' ? null : () => _toggleTaskStatus(doc.id, false),
+        stored == 'completed' || stored == 'missed'
+            ? null
+            : () => _toggleTaskStatus(doc.id, false),
       );
     }
 
@@ -276,7 +333,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
       );
       return buildCard(
         status,
-        status == 'completed' ? null : () => _toggleTaskStatus(doc.id, false),
+        status == 'completed' || status == 'missed'
+            ? null
+            : () => _toggleTaskStatus(doc.id, false),
       );
     }
 
@@ -294,7 +353,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
         );
         return buildCard(
           status,
-          status == 'completed'
+          status == 'completed' || status == 'missed'
               ? null
               : () => _toggleOccurrenceStatus(doc.id, occurrenceDate, status == 'completed'),
         );
