@@ -32,7 +32,12 @@ import '../../widgets/side_drawer.dart';
 /// hard-to-trigger-live 3-signal rule can still be demonstrated (see
 /// RiskService.seedDemoRiskData's doc comment).
 class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({super.key});
+  /// Pre-selects this patient instead of defaulting to the first one in the
+  /// caregiver's list — used when navigating here from a specific patient's
+  /// own screen (e.g. Edit Patient's difficulty section) so the caregiver
+  /// doesn't have to re-find them in the dropdown.
+  final String? initialPatientId;
+  const StatisticsScreen({super.key, this.initialPatientId});
 
   @override
   State<StatisticsScreen> createState() => _StatisticsScreenState();
@@ -55,6 +60,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedPatientId = widget.initialPatientId;
     _loadPatients();
   }
 
@@ -65,7 +71,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       setState(() {
         _patients = patients;
         _loadingPatients = false;
-        if (_selectedPatientId == null && patients.isNotEmpty) {
+        // Fall back to the first patient only if no initialPatientId was
+        // requested, or that patient is no longer in this caregiver's list.
+        final bool selectedStillValid =
+            _selectedPatientId != null && patients.any((p) => p['uid'] == _selectedPatientId);
+        if (!selectedStillValid && patients.isNotEmpty) {
           _selectedPatientId = patients.first['uid'];
         }
       });

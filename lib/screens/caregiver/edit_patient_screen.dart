@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:testproject/models/game_difficulty.dart';
 import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/services/patient_account_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import '../../widgets/side_drawer.dart';
+import 'statistics_screen.dart';
 
 /// Lets a caregiver update a patient's name and trigger a password-reset
 /// email. Email is intentionally not editable — it's the account's sign-in
@@ -36,34 +36,6 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
   bool _saving = false;
   bool _sendingReset = false;
   bool _removing = false;
-
-  GameDifficultyTier? _tier;
-  bool _savingTier = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTier();
-  }
-
-  Future<void> _loadTier() async {
-    final tier = await _firestoreService.getPatientDifficultyTier(widget.patientUid);
-    if (mounted) setState(() => _tier = tier);
-  }
-
-  Future<void> _setTier(GameDifficultyTier tier) async {
-    setState(() {
-      _tier = tier;
-      _savingTier = true;
-    });
-    try {
-      await _firestoreService.setPatientDifficultyTier(widget.patientUid, tier);
-    } catch (e) {
-      _showSnackBar('Error saving difficulty: $e');
-    } finally {
-      if (mounted) setState(() => _savingTier = false);
-    }
-  }
 
   @override
   void dispose() {
@@ -324,66 +296,41 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
             const Divider(color: AppColors.cardPurpleLight),
             const SizedBox(height: 16),
 
-            Row(
-              children: [
-                const Text(
-                  'Cognitive Game Difficulty',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-                if (_savingTier) ...[
-                  const SizedBox(width: 8),
-                  const SizedBox(
-                    height: 14,
-                    width: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.orangeStart,
-                    ),
-                  ),
-                ],
-              ],
+            const Text(
+              'Cognitive Game Difficulty',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 6),
             const Text(
-              'Applies to all of this patient\'s cognitive games — memory '
-              'matching, category naming, and more.',
+              "Each game now adjusts its own difficulty automatically based "
+              "on this patient's recent accuracy. View how each game is "
+              'doing, or override a specific one, in Statistics.',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
             const SizedBox(height: 12),
-            _tier == null
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.orangeStart),
-                  )
-                : Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: GameDifficultyTier.values.map((tier) {
-                      final bool selected = _tier == tier;
-                      return ChoiceChip(
-                        label: Text(tier.label),
-                        selected: selected,
-                        onSelected: (_) => _setTier(tier),
-                        labelStyle: TextStyle(
-                          color: selected ? Colors.white : AppColors.textMuted,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        backgroundColor: AppColors.cardPurple,
-                        selectedColor: AppColors.orangeStart,
-                        side: BorderSide.none,
-                      );
-                    }).toList(),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StatisticsScreen(initialPatientId: widget.patientUid),
                   ),
-            if (_tier != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _tier!.description,
-                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.orangeStart,
+                  side: const BorderSide(color: AppColors.orangeStart),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.insights),
+                label: const Text('View in Statistics'),
               ),
-            ],
+            ),
           ],
         ),
       ),
