@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches categoryDotColor('meal') = AppColors.orangeStart (#FF7A59) at ~18% opacity. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#2EFF7A59"/>
+    <corners android:radius="14dp"/>
+</shape>

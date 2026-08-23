@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches categoryDotColor('exercise') = AppColors.greenCheck (#2ED9A4) at ~18% opacity. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#2E2ED9A4"/>
+    <corners android:radius="14dp"/>
+</shape>

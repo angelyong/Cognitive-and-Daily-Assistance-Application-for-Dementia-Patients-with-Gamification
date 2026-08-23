@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Expanded view for the fancy native reminder notification — see
+  FancyReminderReceiver.kt. Same icon/title/time as
+  notification_reminder_collapsed.xml, plus the Complete/Missed row.
+  Button taps target PendingIntents pointing at ReminderActionReceiver
+  (set programmatically in Kotlin, not here — RemoteViews.setOnClickPendingIntent).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_reminder_card"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <FrameLayout
+            android:id="@+id/reminder_icon_square"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_icon_default">
+
+            <TextView
+                android:id="@+id/reminder_icon_emoji"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textSize="22sp"
+                android:text="🔔"/>
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/reminder_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:text="Task title"/>
+
+            <TextView
+                android:id="@+id/reminder_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#B8B0D4"
+                android:textSize="13sp"
+                android:layout_marginTop="2dp"
+                android:text="8:00 AM"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="14dp">
+
+        <Button
+            android:id="@+id/reminder_btn_complete"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_button_complete"
+            android:text="✓ Complete"
+            android:textColor="#FFFFFF"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:minWidth="0dp"
+            android:minHeight="0dp"/>
+
+        <Button
+            android:id="@+id/reminder_btn_missed"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_button_missed"
+            android:text="⏰ Missed"
+            android:textColor="#FF4D6D"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:minWidth="0dp"
+            android:minHeight="0dp"/>
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "272241804705",
+    "firebase_url": "https://cognitiveanddailyassistanceapp-default-rtdb.firebaseio.com",
+    "project_id": "cognitiveanddailyassistanceapp",
+    "storage_bucket": "cognitiveanddailyassistanceapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:272241804705:android:0d32ba8421614a3112b7e0",
+        "android_client_info": {
+          "package_name": "com.example.testproject"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "272241804705-s98bcvhtf69p099k6qlonkvnqpgsth6o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDS7X68YQKMLyS8T5R4ry-g56kKEYiRFzI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "272241804705-s98bcvhtf69p099k6qlonkvnqpgsth6o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

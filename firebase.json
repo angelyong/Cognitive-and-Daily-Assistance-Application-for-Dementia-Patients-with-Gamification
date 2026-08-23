@@ -1,0 +1,28 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "cognitiveanddailyassistanceapp",
+          "appId": "1:272241804705:android:0d32ba8421614a3112b7e0",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "cognitiveanddailyassistanceapp",
+          "configurations": {
+            "android": "1:272241804705:android:0d32ba8421614a3112b7e0",
+            "ios": "1:272241804705:ios:14d785a577b32d4912b7e0",
+            "macos": "1:272241804705:ios:14d785a577b32d4912b7e0",
+            "web": "1:272241804705:web:e12be8e5416b8a7212b7e0",
+            "windows": "1:272241804705:web:0ce4bbb7711bc67e12b7e0"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  }
+}

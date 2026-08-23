@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches AppColors.cardPurple (#2E2750), rounded to match ReminderPopup's card. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#2E2750"/>
+    <corners android:radius="20dp"/>
+</shape>
