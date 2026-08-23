@@ -25,7 +25,7 @@ class PatientTaskHistoryScreen extends StatefulWidget {
 }
 
 class _PatientTaskHistoryScreenState extends State<PatientTaskHistoryScreen> {
-  final FirestoreService _firestore = FirestoreService();
+  final FirestoreService _firestoreService = FirestoreService();
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
   _StatusFilter _statusFilter = _StatusFilter.all;
@@ -121,7 +121,7 @@ class _PatientTaskHistoryScreenState extends State<PatientTaskHistoryScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () async {
-                          await _firestore.updateTaskDetails(taskId, {
+                          await _firestoreService.updateTaskDetails(taskId, {
                             'status': status,
                           });
                           if (context.mounted) Navigator.pop(context);
@@ -194,7 +194,7 @@ class _PatientTaskHistoryScreenState extends State<PatientTaskHistoryScreen> {
     if (confirmed != true) return;
 
     try {
-      await _firestore.deleteTask(taskId);
+      await _firestoreService.deleteTask(taskId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Task deleted'), backgroundColor: Colors.green),
@@ -257,7 +257,7 @@ class _PatientTaskHistoryScreenState extends State<PatientTaskHistoryScreen> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
-                      stream: _firestore.getTaskHistory(_uid),
+                      stream: _firestoreService.getTaskHistory(_uid),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
                           return Center(

@@ -37,7 +37,7 @@ class TaskDetailScreen extends StatefulWidget {
 }
 
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
-  final FirestoreService _firestore = FirestoreService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   bool _loading = true;
   bool _isCaregiver = false;
@@ -58,7 +58,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   Future<void> _load() async {
     final results = await Future.wait([
-      _firestore.getTask(widget.taskId),
+      _firestoreService.getTask(widget.taskId),
       _loadRole(),
     ]);
     final data = results[0] as Map<String, dynamic>?;
@@ -95,7 +95,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           );
           occurrenceDate = occurrences.first;
           occurrenceStatus =
-              await _firestore.getOccurrenceStatus(widget.taskId, occurrenceDate);
+              await _firestoreService.getOccurrenceStatus(widget.taskId, occurrenceDate);
         }
       }
     }
@@ -134,9 +134,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       data[RecurrenceTypeX.firestoreField] as String?,
     );
     if (type == RecurrenceType.none) {
-      await _firestore.updateTaskStatus(widget.taskId, status);
+      await _firestoreService.updateTaskStatus(widget.taskId, status);
     } else {
-      await _firestore.setOccurrenceStatus(widget.taskId, occurrenceDate, status);
+      await _firestoreService.setOccurrenceStatus(widget.taskId, occurrenceDate, status);
     }
     await NotificationService().cancelOccurrenceReminders(widget.taskId, occurrenceDate);
 

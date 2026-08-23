@@ -30,7 +30,7 @@ class TaskHistoryScreen extends StatefulWidget {
 }
 
 class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
-  final FirestoreService _firestore = FirestoreService();
+  final FirestoreService _firestoreService = FirestoreService();
   final String caregiverId = FirebaseAuth.instance.currentUser!.uid;
 
   List<Map<String, dynamic>> _patients = [];
@@ -48,7 +48,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
   Future<void> _loadPatients() async {
     setState(() => _loadingPatients = true);
     try {
-      final patients = await _firestore.getPatientsForCaregiver(caregiverId);
+      final patients = await _firestoreService.getPatientsForCaregiver(caregiverId);
       setState(() {
         _patients = patients;
         _loadingPatients = false;
@@ -153,7 +153,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
               child: _selectedPatientId == null
                   ? const SizedBox.shrink()
                   : StreamBuilder<QuerySnapshot>(
-                      stream: _firestore.getTaskHistory(_selectedPatientId!),
+                      stream: _firestoreService.getTaskHistory(_selectedPatientId!),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
                           return Center(

@@ -31,7 +31,7 @@ class CreateTaskScreen extends StatefulWidget {
 }
 
 class _CreateTaskScreenState extends State<CreateTaskScreen> {
-  final FirestoreService _firestore = FirestoreService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -153,7 +153,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Future<void> _loadPatients() async {
     setState(() => _loadingPatients = true);
     try {
-      final patients = await _firestore.getPatientsForCaregiver(caregiverId);
+      final patients = await _firestoreService.getPatientsForCaregiver(caregiverId);
       setState(() {
         _patients = patients;
         _loadingPatients = false;
@@ -439,7 +439,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       final String taskId;
       if (_isEditing) {
         taskId = widget.taskId!;
-        await _firestore.updateTask(
+        await _firestoreService.updateTask(
           taskId: taskId,
           patientId: _selectedPatientId!,
           title: _titleController.text.trim(),
@@ -454,7 +454,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           reminderIntervalMinutes: _reminderIntervalMinutes,
         );
       } else {
-        taskId = await _firestore.addTask(
+        taskId = await _firestoreService.addTask(
           caregiverId: caregiverId,
           patientId: _selectedPatientId!,
           title: _titleController.text.trim(),
@@ -527,7 +527,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
     try {
       final String taskId = widget.taskId!;
-      await _firestore.deleteTask(taskId);
+      await _firestoreService.deleteTask(taskId);
       await NotificationService().cancelReminder(
         NotificationService.idFor(taskId),
       );

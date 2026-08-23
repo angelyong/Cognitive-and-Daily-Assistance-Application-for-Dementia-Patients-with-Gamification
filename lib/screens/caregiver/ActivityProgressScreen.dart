@@ -36,7 +36,7 @@ class ActivityProgress extends StatefulWidget {
 }
 
 class _ActivityProgressState extends State<ActivityProgress> {
-  final FirestoreService _firestore = FirestoreService();
+  final FirestoreService _firestoreService = FirestoreService();
   final String caregiverId = FirebaseAuth.instance.currentUser!.uid;
 
   List<Map<String, dynamic>> _patients = [];
@@ -55,7 +55,7 @@ class _ActivityProgressState extends State<ActivityProgress> {
   Future<void> _loadPatients() async {
     setState(() => _loadingPatients = true);
     try {
-      final patients = await _firestore.getPatientsForCaregiver(caregiverId);
+      final patients = await _firestoreService.getPatientsForCaregiver(caregiverId);
       setState(() {
         _patients = patients;
         _loadingPatients = false;
@@ -103,7 +103,7 @@ class _ActivityProgressState extends State<ActivityProgress> {
         for (int i = 0; i < events.length; i++)
           _EventTimelineRow(
             event: events[i],
-            firestore: _firestore,
+            firestore: _firestoreService,
             isFirst: i == 0,
             isLast: i == events.length - 1,
             isNext: i == nextUpIndex,
@@ -193,7 +193,7 @@ class _ActivityProgressState extends State<ActivityProgress> {
               )
             else
               StreamBuilder<QuerySnapshot>(
-                stream: _firestore.getTaskHistory(_selectedPatientId!),
+                stream: _firestoreService.getTaskHistory(_selectedPatientId!),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return Text(
