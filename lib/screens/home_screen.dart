@@ -189,10 +189,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   // getAllTasksForCaregiver is unbounded by date — narrow
                   // to what should actually show on "today's" dashboard
                   // before anything else touches this list. See the
-                  // file-level comment for the visibility rule.
+                  // file-level comment for the visibility rule. visibleDocs
+                  // is DISPLAY-ONLY (see _visibleDocs' own doc comment) —
+                  // the missed-status sweep below deliberately does NOT use
+                  // it (see BUGFIX there).
                   final visibleDocs = _visibleDocs(allDocs.cast<QueryDocumentSnapshot>());
+                  // BUGFIX (hidden-bugs review): this used to sweep only
+                  // visibleDocs, which is bounded by
+                  // FirestoreService.homeWindowDays (+/-3 days) for DISPLAY
+                  // purposes — so a non-recurring task overdue by more than
+                  // 3 days was invisible to this sweep and stayed 'pending'
+                  // forever from HomeScreen's perspective, while
+                  // PatientDashboard's own (already unbounded) sweep would
+                  // correctly flip that SAME task to 'missed' the next time
+                  // the patient opened their dashboard — the two screens
+                  // could silently disagree on a task's persisted status
+                  // depending on which one last touched it. Sweeping
+                  // allDocs (unbounded, exactly like PatientDashboard)
+                  // instead keeps both screens' sweeps in agreement, with
+                  // no ±3-day window involved in deciding whether an old
+                  // task becomes missed.
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _persistMissedStatus(visibleDocs);
+                    _persistMissedStatus(allDocs.cast<QueryDocumentSnapshot>());
                   });
 
                   final medicationDocs = visibleDocs.where((d) {
@@ -568,10 +586,19 @@ class _HomeScreenState extends State<HomeScreen> {
   /// see PatientDashboard's identical method for the full reasoning
   /// (legacy top-level status for a single task, per-occurrence
   /// subcollection for a recurring one).
+  ///
+  /// BUGFIX (hidden-bugs review): 'missed' is now a terminal status here,
+  /// same as 'completed' already was — the toggle callback is disabled
+  /// (null) for either, instead of only for 'completed'. Previously a
+  /// missed task's tick icon was still fully wired, so tapping it called
+  /// _toggleTaskStatus/_toggleOccurrenceStatus with isCurrentlyDone=false
+  /// (since 'missed' != 'completed') and silently flipped it straight to
+  /// 'completed' — a task the missed-status sweep had already resolved
+  /// could be reopened by a single accidental tap.
   Widget _occurrenceAwareCard(
     QueryDocumentSnapshot doc,
     Map<String, dynamic> data,
-    Widget Function(String status, VoidCallback onToggle) buildCard,
+    Widget Function(String status, VoidCallback? onToggle) buildCard,
   ) {
     final series = TaskSeries.fromDoc(doc);
     final int intervalMinutes = _firestoreService.reminderIntervalMinutesOf(data);
@@ -589,7 +616,9 @@ class _HomeScreenState extends State<HomeScreen> {
           : stored;
       return buildCard(
         status,
-        () => _toggleTaskStatus(doc.id, patientId, status == 'completed'),
+        status == 'missed'
+            ? null
+            : () => _toggleTaskStatus(doc.id, patientId, status == 'completed'),
       );
     }
 
@@ -608,12 +637,14 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         return buildCard(
           status,
-          () => _toggleOccurrenceStatus(
-            doc.id,
-            patientId,
-            occurrenceDate,
-            status == 'completed',
-          ),
+          status == 'missed'
+              ? null
+              : () => _toggleOccurrenceStatus(
+                    doc.id,
+                    patientId,
+                    occurrenceDate,
+                    status == 'completed',
+                  ),
         );
       },
     );
