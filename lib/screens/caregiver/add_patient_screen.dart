@@ -7,7 +7,7 @@ import 'package:testproject/services/patient_account_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import 'package:testproject/widgets/dementia_badges.dart';
-import '../../widgets/SideDrawer.dart';
+import '../../widgets/side_drawer.dart';
 
 /// UC: Add & Manage Patient Accounts.
 ///

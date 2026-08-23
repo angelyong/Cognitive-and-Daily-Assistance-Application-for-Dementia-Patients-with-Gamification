@@ -5,7 +5,7 @@ import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/services/patient_account_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
-import '../../widgets/SideDrawer.dart';
+import '../../widgets/side_drawer.dart';
 
 /// Lets a caregiver update a patient's name and trigger a password-reset
 /// email. Email is intentionally not editable — it's the account's sign-in

@@ -15,7 +15,7 @@ import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import 'package:testproject/theme/app_text_styles.dart';
 import 'package:testproject/widgets/risk_badge.dart';
-import '../../widgets/SideDrawer.dart';
+import '../../widgets/side_drawer.dart';
 
 /// PART 1 (adaptive_difficulty_and_risk_indicator_prompt.md), Section 1.6:
 /// data surfacing + caregiver override UI for the Adaptive Difficulty

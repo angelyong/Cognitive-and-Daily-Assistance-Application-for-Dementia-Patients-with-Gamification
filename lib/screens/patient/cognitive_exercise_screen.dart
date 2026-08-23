@@ -6,7 +6,7 @@ import 'package:testproject/models/dementia_profile.dart';
 import 'package:testproject/models/reward_game.dart';
 import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/theme/app_colors.dart';
-import '../../widgets/SideDrawer.dart';
+import '../../widgets/side_drawer.dart';
 import 'games/category_naming_game.dart';
 import 'games/familiar_sound_game.dart';
 import 'games/guided_daily_steps_game.dart';

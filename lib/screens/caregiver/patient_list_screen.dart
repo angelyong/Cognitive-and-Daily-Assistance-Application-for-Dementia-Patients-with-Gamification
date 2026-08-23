@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/theme/app_colors.dart';
-import 'package:testproject/widgets/SideDrawer.dart';
+import 'package:testproject/widgets/side_drawer.dart';
 import 'package:testproject/widgets/patient_card.dart';
 import 'add_patient_screen.dart';
 import 'edit_patient_screen.dart';

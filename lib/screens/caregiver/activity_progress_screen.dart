@@ -10,7 +10,7 @@ import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import 'package:testproject/theme/app_text_styles.dart';
 import 'package:testproject/widgets/timeline_card.dart';
-import '../../widgets/SideDrawer.dart';
+import '../../widgets/side_drawer.dart';
 import '../task_detail_screen.dart';
 
 /// Phase 1 (see phase1_calendar_ui_prompt.md): an in-app month calendar so

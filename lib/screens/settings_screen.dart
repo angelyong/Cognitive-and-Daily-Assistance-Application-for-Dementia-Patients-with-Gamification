@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:testproject/services/font_scale_notifier.dart';
 import 'package:testproject/theme/app_colors.dart';
-import '../widgets/SideDrawer.dart';
+import '../widgets/side_drawer.dart';
 
 /// App-wide preferences. Currently just font size, but the layout leaves
 /// room to add more (theme, notification defaults, ...) later.

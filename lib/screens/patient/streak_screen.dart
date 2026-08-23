@@ -8,7 +8,7 @@ import 'package:testproject/models/task_recurrence.dart';
 import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/services/streak_service.dart';
 import 'package:testproject/theme/app_colors.dart';
-import 'package:testproject/widgets/SideDrawer.dart';
+import 'package:testproject/widgets/side_drawer.dart';
 import 'package:testproject/widgets/timeline_card.dart' show categoryDotColor, formatCardTime;
 
 /// Redesigned to match the reference layout: a gradient streak-count card,

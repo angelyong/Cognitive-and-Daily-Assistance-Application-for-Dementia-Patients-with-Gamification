@@ -7,7 +7,7 @@ import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import 'package:testproject/theme/app_text_styles.dart';
-import '../../widgets/SideDrawer.dart';
+import '../../widgets/side_drawer.dart';
 import '../task_detail_screen.dart';
 
 enum _StatusFilter { all, pending, completed, missed }
@@ -15,7 +15,7 @@ enum _StatusFilter { all, pending, completed, missed }
 /// Caregiver-facing history of one patient's tasks — every task ever
 /// assigned to them, not just today's (compare HomeScreen, which is
 /// today-only). Reuses the same patient-fetch pattern as
-/// createTaskScreen.dart's "Assign to Patient" dropdown.
+/// create_task_screen.dart's "Assign to Patient" dropdown.
 ///
 /// Tapping a card opens the read-only detail view (UC-05 8a/8b), which
 /// itself offers an Edit button — this is the only way to fix a task
