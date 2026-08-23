@@ -342,37 +342,54 @@ class _MemoryMatchingGameState extends State<MemoryMatchingGame> {
         : _config.pointsForWin;
 
     final String? uid = _uid;
-    if (uid != null && pointsEarned > 0) {
-      await _firestoreService.awardPoints(uid, pointsEarned);
-    }
-    // PART 1: record this session and let the engine decide whether to
-    // promote/demote — sessionId is derived from this round's own start
-    // time (captured once in _setUpGame), so it's stable for this round's
-    // lifetime (idempotent against an accidental double-call of this
-    // method for the same round).
-    if (uid != null && _sessionStart != null) {
-      // ACCURACY NOTE: using pairCount/matchedPairs here would make
-      // accuracy trivially 1.0 on every non-timeout completion (errorless
-      // design means every round DOES eventually finish), which would
-      // make promotion fire almost immediately and demotion never fire at
-      // all except via a timeout — defeating the adaptive engine's whole
-      // purpose. Using _moves (every flip-comparison attempted, including
-      // mismatches) as totalItems and _matchedPairs (successful
-      // comparisons) as correctItems instead measures the real signal:
-      // how many attempts it took to find each pair, not just whether the
-      // round eventually completed.
-      _level = await _difficultyService.recordSessionAndAdapt(
-        sessionId: '${uid}_${_gameId}_${_sessionStart!.millisecondsSinceEpoch}',
-        patientId: uid,
-        gameId: _gameId,
-        gameSet: _gameSet,
-        difficultyLevel: _level,
-        totalItems: _moves,
-        correctItems: _matchedPairs,
-        hintsUsed: _hintsUsedThisSession,
-        durationSeconds: DateTime.now().difference(_sessionStart!).inSeconds,
-      );
-      _config = _TierConfig.forLevel(_level); // reflect any promote/demote for "Play Again"
+    // Network/permission failures here must never strand the patient on a
+    // frozen screen — the session already finished from their point of
+    // view, so any save failure is reported quietly (a SnackBar) and the
+    // completion dialog below still shows either way.
+    if (uid != null) {
+      try {
+        if (pointsEarned > 0) {
+          await _firestoreService.awardPoints(uid, pointsEarned);
+        }
+        // PART 1: record this session and let the engine decide whether to
+        // promote/demote — sessionId is derived from this round's own start
+        // time (captured once in _setUpGame), so it's stable for this round's
+        // lifetime (idempotent against an accidental double-call of this
+        // method for the same round).
+        if (_sessionStart != null) {
+          // ACCURACY NOTE: using pairCount/matchedPairs here would make
+          // accuracy trivially 1.0 on every non-timeout completion (errorless
+          // design means every round DOES eventually finish), which would
+          // make promotion fire almost immediately and demotion never fire at
+          // all except via a timeout — defeating the adaptive engine's whole
+          // purpose. Using _moves (every flip-comparison attempted, including
+          // mismatches) as totalItems and _matchedPairs (successful
+          // comparisons) as correctItems instead measures the real signal:
+          // how many attempts it took to find each pair, not just whether the
+          // round eventually completed.
+          _level = await _difficultyService.recordSessionAndAdapt(
+            sessionId: '${uid}_${_gameId}_${_sessionStart!.millisecondsSinceEpoch}',
+            patientId: uid,
+            gameId: _gameId,
+            gameSet: _gameSet,
+            difficultyLevel: _level,
+            totalItems: _moves,
+            correctItems: _matchedPairs,
+            hintsUsed: _hintsUsedThisSession,
+            durationSeconds: DateTime.now().difference(_sessionStart!).inSeconds,
+          );
+          _config = _TierConfig.forLevel(_level); // reflect any promote/demote for "Play Again"
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Couldn't save your progress — check your connection and try again."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
 
     if (!mounted) return;

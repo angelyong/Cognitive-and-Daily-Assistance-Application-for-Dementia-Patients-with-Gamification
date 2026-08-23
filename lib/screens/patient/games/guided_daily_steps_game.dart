@@ -177,26 +177,43 @@ class _GuidedDailyStepsGameState extends State<GuidedDailyStepsGame> {
     const int pointsPerStep = 5;
     final int pointsEarned = _task.steps.length * pointsPerStep;
     final String? uid = _uid;
-    if (uid != null && pointsEarned > 0) {
-      await _firestoreService.awardPoints(uid, pointsEarned);
-    }
-    if (uid != null && _sessionStart != null) {
-      // ACCURACY: total taps (correct + wrong), not just steps placed
-      // (always equals task length under errorless design) — see
-      // memory_matching_game.dart's identical note.
-      final int totalTaps = _task.steps.length + _totalWrongTapsSession;
-      _level = await _difficultyService.recordSessionAndAdapt(
-        sessionId: '${uid}_${_gameId}_${_sessionStart!.millisecondsSinceEpoch}',
-        patientId: uid,
-        gameId: _gameId,
-        gameSet: _gameSet,
-        difficultyLevel: _level,
-        totalItems: totalTaps,
-        correctItems: _task.steps.length,
-        hintsUsed: _hintsUsedThisSession,
-        durationSeconds: DateTime.now().difference(_sessionStart!).inSeconds,
-      );
-      _config = _LevelConfig.forLevel(_level);
+    // Network/permission failures here must never strand the patient on a
+    // frozen screen — the session already finished from their point of
+    // view, so any save failure is reported quietly (a SnackBar) and the
+    // completion dialog below still shows either way.
+    if (uid != null) {
+      try {
+        if (pointsEarned > 0) {
+          await _firestoreService.awardPoints(uid, pointsEarned);
+        }
+        if (_sessionStart != null) {
+          // ACCURACY: total taps (correct + wrong), not just steps placed
+          // (always equals task length under errorless design) — see
+          // memory_matching_game.dart's identical note.
+          final int totalTaps = _task.steps.length + _totalWrongTapsSession;
+          _level = await _difficultyService.recordSessionAndAdapt(
+            sessionId: '${uid}_${_gameId}_${_sessionStart!.millisecondsSinceEpoch}',
+            patientId: uid,
+            gameId: _gameId,
+            gameSet: _gameSet,
+            difficultyLevel: _level,
+            totalItems: totalTaps,
+            correctItems: _task.steps.length,
+            hintsUsed: _hintsUsedThisSession,
+            durationSeconds: DateTime.now().difference(_sessionStart!).inSeconds,
+          );
+          _config = _LevelConfig.forLevel(_level);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Couldn't save your progress — check your connection and try again."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
 
     if (!mounted) return;

@@ -270,24 +270,41 @@ class _ProspectiveMemoryGameState extends State<ProspectiveMemoryGame> {
         succeeded ? _config.pointsForSuccess : (_config.pointsForSuccess / 2).round();
 
     final String? uid = _uid;
-    if (uid != null && pointsEarned > 0) {
-      await _firestoreService.awardPoints(uid, pointsEarned);
-    }
-    if (uid != null && _sessionStart != null) {
-      // Single pass/fail event per session (not multiple items) — 1/1 on
-      // success, 0/1 on a missed trigger.
-      _level = await _difficultyService.recordSessionAndAdapt(
-        sessionId: '${uid}_${_gameId}_${_sessionStart!.millisecondsSinceEpoch}',
-        patientId: uid,
-        gameId: _gameId,
-        gameSet: _gameSet,
-        difficultyLevel: _level,
-        totalItems: 1,
-        correctItems: succeeded ? 1 : 0,
-        hintsUsed: _hintsUsedThisSession,
-        durationSeconds: DateTime.now().difference(_sessionStart!).inSeconds,
-      );
-      _config = _TierConfig.forLevel(_level);
+    // Network/permission failures here must never strand the patient on a
+    // frozen screen — the session already finished from their point of
+    // view, so any save failure is reported quietly (a SnackBar) and the
+    // completion dialog below still shows either way.
+    if (uid != null) {
+      try {
+        if (pointsEarned > 0) {
+          await _firestoreService.awardPoints(uid, pointsEarned);
+        }
+        if (_sessionStart != null) {
+          // Single pass/fail event per session (not multiple items) — 1/1 on
+          // success, 0/1 on a missed trigger.
+          _level = await _difficultyService.recordSessionAndAdapt(
+            sessionId: '${uid}_${_gameId}_${_sessionStart!.millisecondsSinceEpoch}',
+            patientId: uid,
+            gameId: _gameId,
+            gameSet: _gameSet,
+            difficultyLevel: _level,
+            totalItems: 1,
+            correctItems: succeeded ? 1 : 0,
+            hintsUsed: _hintsUsedThisSession,
+            durationSeconds: DateTime.now().difference(_sessionStart!).inSeconds,
+          );
+          _config = _TierConfig.forLevel(_level);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Couldn't save your progress — check your connection and try again."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
 
     if (!mounted) return;
