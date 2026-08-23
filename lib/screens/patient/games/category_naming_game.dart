@@ -285,13 +285,15 @@ class _CategoryNamingGameState extends State<CategoryNamingGame> {
     // Network/permission failures here must never strand the patient on a
     // frozen screen — the session already finished from their point of
     // view, so any save failure is reported quietly (a SnackBar) and the
-    // completion dialog below still shows either way.
+    // completion dialog below still shows either way. The two saves below
+    // are INDEPENDENT (separate try/catch each) — a failed points award
+    // must never prevent recordSessionAndAdapt from running, since that
+    // call is also what writes the raw session record other systems (the
+    // accuracy trend chart, the risk indicator's score-drop signal) depend
+    // on, and vice versa.
     if (uid != null) {
-      try {
-        if (pointsEarned > 0) {
-          await _firestoreService.awardPoints(uid, pointsEarned);
-        }
-        if (_sessionStart != null) {
+      if (_sessionStart != null) {
+        try {
           // ACCURACY NOTE: totalRounds*correctPerRound vs. _totalCorrectTaps
           // would always be equal (a round only ends once exactly that many
           // correct items are found, by construction) — trivially 1.0 on
@@ -311,15 +313,29 @@ class _CategoryNamingGameState extends State<CategoryNamingGame> {
             durationSeconds: DateTime.now().difference(_sessionStart!).inSeconds,
           );
           _config = _TierConfig.forLevel(_level); // reflect any promote/demote for "Play Again"
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Couldn't save your progress — check your connection and try again."),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Couldn't save your progress — check your connection and try again."),
-              backgroundColor: Colors.red,
-            ),
-          );
+      }
+      if (pointsEarned > 0) {
+        try {
+          await _firestoreService.awardPoints(uid, pointsEarned);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Couldn't save your points — check your connection and try again."),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       }
     }
