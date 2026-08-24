@@ -17,7 +17,7 @@ import 'package:testproject/models/game_session.dart';
 /// mapping.
 ///
 /// ONE service, called by every game (recordSessionAndAdapt) and by
-/// StatisticsScreen (getState/watchState/setCaregiverOverride/resumeAuto/
+/// GameStatisticScreen (getState/watchState/setCaregiverOverride/resumeAuto/
 /// watchRecentSessions/watchHistory) — no rule logic duplicated in UI code.
 class AdaptiveDifficultyService {
   AdaptiveDifficultyService._internal();
@@ -324,7 +324,7 @@ class AdaptiveDifficultyService {
   }
 
   /// Last [limit] sessions for one (patient, game), newest first — feeds
-  /// StatisticsScreen's per-game accuracy trend.
+  /// GameStatisticScreen's per-game accuracy trend.
   Stream<List<GameSession>> watchRecentSessions(String patientId, String gameId, {int limit = 10}) {
     return _db
         .collection('gameSessions')
@@ -337,7 +337,7 @@ class AdaptiveDifficultyService {
   }
 
   /// Full difficulty-change audit trail for a patient (every game),
-  /// newest first — feeds StatisticsScreen's history list.
+  /// newest first — feeds GameStatisticScreen's history list.
   Stream<QuerySnapshot<Map<String, dynamic>>> watchHistory(String patientId, {int limit = 30}) {
     return _db
         .collection('difficultyHistory')

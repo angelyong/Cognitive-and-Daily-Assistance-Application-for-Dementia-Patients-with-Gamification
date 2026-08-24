@@ -21,7 +21,7 @@ import 'package:testproject/models/task_recurrence.dart';
 /// [evaluateAndCache] is called once whenever a caregiver-facing screen
 /// that shows the risk badge is opened (see PatientRiskBadge in
 /// widgets/risk_badge.dart, used by PatientListScreen/HomeScreen/
-/// StatisticsScreen). Reads are cheap and bounded (a handful of task docs
+/// GameStatisticScreen). Reads are cheap and bounded (a handful of task docs
 /// plus up to 10 game sessions per patient), so re-evaluating on every
 /// dashboard open is simple and correct at this app's scale; a version
 /// serving many more patients would rate-limit this using the cached
@@ -268,7 +268,7 @@ class RiskService {
   /// than once (deterministic doc IDs overwrite rather than duplicate).
   ///
   /// Caller is responsible for only exposing this in a debug build (see
-  /// StatisticsScreen's `kDebugMode`-gated button) — this fabricates
+  /// GameStatisticScreen's `kDebugMode`-gated button) — this fabricates
   /// Firestore data and must never run in a caregiver's normal workflow.
   Future<void> seedDemoRiskData(String patientId) async {
     final DateTime now = DateTime.now();

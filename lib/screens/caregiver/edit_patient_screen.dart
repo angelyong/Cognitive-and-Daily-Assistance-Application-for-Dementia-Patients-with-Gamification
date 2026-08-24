@@ -5,7 +5,7 @@ import 'package:testproject/services/patient_account_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import '../../widgets/side_drawer.dart';
-import 'statistics_screen.dart';
+import 'game_statistic_screen.dart';
 
 /// Lets a caregiver update a patient's name and trigger a password-reset
 /// email. Email is intentionally not editable — it's the account's sign-in
@@ -318,7 +318,7 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => StatisticsScreen(initialPatientId: widget.patientUid),
+                    builder: (_) => GameStatisticScreen(initialPatientId: widget.patientUid),
                   ),
                 ),
                 style: OutlinedButton.styleFrom(

@@ -48,7 +48,7 @@ class RiskBadge extends StatelessWidget {
 /// Triggers a fresh evaluation once when first shown (see RiskService's
 /// class doc comment for why "evaluate on every caregiver screen load" is
 /// the chosen trigger strategy), then renders the live cached badge — used
-/// identically by PatientCard/HomeScreen/StatisticsScreen so none of them
+/// identically by PatientCard/HomeScreen/GameStatisticScreen so none of them
 /// duplicate this trigger-then-watch logic.
 class PatientRiskBadge extends StatefulWidget {
   final String patientId;

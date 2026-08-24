@@ -18,7 +18,8 @@ import 'package:testproject/services/font_scale_notifier.dart';
 import 'package:testproject/screens/caregiver/add_patient_screen.dart';
 import 'package:testproject/screens/caregiver/patient_list_screen.dart';
 import 'package:testproject/screens/caregiver/task_history_screen.dart';
-import 'package:testproject/screens/caregiver/statistics_screen.dart';
+import 'package:testproject/screens/caregiver/game_statistic_screen.dart';
+import 'package:testproject/screens/caregiver/patient_performance_screen.dart';
 import 'package:testproject/screens/patient/task_history_screen.dart';
 import 'package:testproject/screens/task_detail_screen.dart';
 import 'package:testproject/services/navigator_key.dart';
@@ -115,8 +116,17 @@ class MyApp extends StatelessWidget {
         '/taskhistory': (context) =>
             const TaskHistoryScreen(),
 
+        // Now the bird's-eye Patient Performance dashboard — the drawer's
+        // "Statistics" item keeps this route name so nothing else has to
+        // change, but it opens a different screen than it used to (see
+        // PERFORMANCE_DASHBOARD_PLAN.md). Per-game difficulty depth moved
+        // to '/gamestatistic', reached FROM this dashboard now, not
+        // directly from the drawer.
         '/statistics': (context) =>
-            const StatisticsScreen(),
+            const PatientPerformanceScreen(),
+
+        '/gamestatistic': (context) =>
+            const GameStatisticScreen(),
 
         '/patienttaskhistory': (context) =>
             const PatientTaskHistoryScreen(),

@@ -1,5 +1,5 @@
 /// PART 1 (adaptive_difficulty_and_risk_indicator_prompt.md): canonical
-/// list of every cognitive game's id/label/set, so StatisticsScreen (and
+/// list of every cognitive game's id/label/set, so GameStatisticScreen (and
 /// anything else needing "all 13 games" — e.g. a future risk-indicator
 /// pass) has one shared source instead of re-deriving it. `id` values
 /// match each game file's own `_gameId` constant exactly (see each game's

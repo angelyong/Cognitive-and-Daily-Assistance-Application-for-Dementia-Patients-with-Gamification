@@ -31,19 +31,25 @@ import '../../widgets/side_drawer.dart';
 /// patient selector, plus a debug-only "seed demo risk data" action so the
 /// hard-to-trigger-live 3-signal rule can still be demonstrated (see
 /// RiskService.seedDemoRiskData's doc comment).
-class StatisticsScreen extends StatefulWidget {
+///
+/// RENAMED from StatisticsScreen (see PERFORMANCE_DASHBOARD_PLAN.md): the
+/// bird's-eye, all-games-at-once view now lives in PatientPerformanceScreen
+/// instead — this screen kept its per-game depth (level/override/accuracy
+/// trend/history) and is reached FROM that dashboard (or from Edit
+/// Patient), not directly from the drawer anymore.
+class GameStatisticScreen extends StatefulWidget {
   /// Pre-selects this patient instead of defaulting to the first one in the
   /// caregiver's list — used when navigating here from a specific patient's
   /// own screen (e.g. Edit Patient's difficulty section) so the caregiver
   /// doesn't have to re-find them in the dropdown.
   final String? initialPatientId;
-  const StatisticsScreen({super.key, this.initialPatientId});
+  const GameStatisticScreen({super.key, this.initialPatientId});
 
   @override
-  State<StatisticsScreen> createState() => _StatisticsScreenState();
+  State<GameStatisticScreen> createState() => _GameStatisticScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> {
+class _GameStatisticScreenState extends State<GameStatisticScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final String _caregiverId = FirebaseAuth.instance.currentUser!.uid;
 
@@ -110,7 +116,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Statistics', style: AppTextStyles.heading),
+            const Text('Game Statistics', style: AppTextStyles.heading),
             const SizedBox(height: 4),
             const Text(
               "A patient's game difficulty, accuracy trend, and change history.",

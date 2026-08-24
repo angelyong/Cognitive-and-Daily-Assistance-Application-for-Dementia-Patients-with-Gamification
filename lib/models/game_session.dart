@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// PART 1 (adaptive_difficulty_and_risk_indicator_prompt.md): one record of
 /// a patient finishing one game session — the raw material the Adaptive
 /// Difficulty Engine's promote/demote rules run against (see
-/// AdaptiveDifficultyService), and what StatisticsScreen's trend chart
+/// AdaptiveDifficultyService), and what GameStatisticScreen's trend chart
 /// reads. Stored at `gameSessions/{sessionId}` with a CLIENT-GENERATED
 /// deterministic id (see AdaptiveDifficultyService.recordSessionAndAdapt)
 /// so an accidental double-submit overwrites the same doc rather than
