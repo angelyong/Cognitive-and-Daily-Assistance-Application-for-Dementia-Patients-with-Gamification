@@ -1,3 +1,5 @@
+import 'package:testproject/models/dementia_profile.dart';
+
 /// PART 1 (adaptive_difficulty_and_risk_indicator_prompt.md): canonical
 /// list of every cognitive game's id/label/set, so GameStatisticScreen (and
 /// anything else needing "all 13 games" — e.g. a future risk-indicator
@@ -38,3 +40,20 @@ String gameLabelFor(String gameId) {
   }
   return gameId;
 }
+
+/// Which of the 4 game sets a patient's own [CognitiveExerciseScreen] shows
+/// them, derived from their dementia type + stage — the same crossing
+/// CognitiveExerciseScreen._gameCardsFor already applies, pulled out here
+/// so GameStatisticScreen can filter kGameCatalog down to only the games a
+/// given patient can actually play, instead of listing all 13.
+String gameSetFor(DementiaType type, DementiaStage stage) {
+  if (type == DementiaType.alzheimers && stage == DementiaStage.early) return 'ad_early';
+  if (type == DementiaType.alzheimers && stage == DementiaStage.middle) return 'ad_middle';
+  if (type == DementiaType.vascular && stage == DementiaStage.early) return 'vad_early';
+  return 'vad_middle';
+}
+
+/// [kGameCatalog] filtered to just the games matching one game set —
+/// e.g. what GameStatisticScreen shows for a specific patient.
+List<GameCatalogEntry> gamesForSet(String gameSet) =>
+    kGameCatalog.where((g) => g.gameSet == gameSet).toList();

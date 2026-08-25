@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:testproject/models/dementia_profile.dart';
 import 'package:testproject/models/game_catalog.dart';
 import 'package:testproject/models/game_session.dart';
 import 'package:testproject/models/risk_assessment.dart';
@@ -61,6 +62,19 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
   String get _selectedPatientName {
     final match = _patients.where((p) => p['uid'] == _selectedPatientId);
     return match.isEmpty ? 'Patient' : (match.first['name'] ?? 'Patient') as String;
+  }
+
+  /// Which of the 4 game sets the selected patient actually plays, derived
+  /// from their own dementiaType/dementiaStage — so "Game Difficulty" only
+  /// lists the 3-4 games this patient can play, not all 13 across every
+  /// set (see GAME_STATISTIC_SCREEN_CATEGORY_MISMATCH.md for why this was
+  /// previously unfiltered).
+  String get _selectedPatientGameSet {
+    final match = _patients.where((p) => p['uid'] == _selectedPatientId);
+    final Map<String, dynamic>? patient = match.isEmpty ? null : match.first;
+    final DementiaType type = DementiaTypeX.fromFirestore(patient?['dementiaType'] as String?);
+    final DementiaStage stage = DementiaStageX.fromFirestore(patient?['dementiaStage'] as String?);
+    return gameSetFor(type, stage);
   }
 
   @override
@@ -173,7 +187,7 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
                 style: AppTextStyles.muted,
               ),
               const SizedBox(height: 10),
-              for (final game in kGameCatalog) ...[
+              for (final game in gamesForSet(_selectedPatientGameSet)) ...[
                 _GameDifficultyCard(
                   patientId: _selectedPatientId!,
                   caregiverId: _caregiverId,
