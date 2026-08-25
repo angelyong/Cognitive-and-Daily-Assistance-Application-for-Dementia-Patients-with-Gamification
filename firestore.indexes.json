@@ -15,6 +15,47 @@
         { "fieldPath": "patientId", "order": "ASCENDING" },
         { "fieldPath": "dueDate", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "gameSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "patientId", "order": "ASCENDING" },
+        { "fieldPath": "gameId", "order": "ASCENDING" },
+        { "fieldPath": "completedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gameSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "patientId", "order": "ASCENDING" },
+        { "fieldPath": "completedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "difficultyHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "patientId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "riskHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "patientId", "order": "ASCENDING" },
+        { "fieldPath": "evaluatedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notificationHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "patientId", "order": "ASCENDING" },
+        { "fieldPath": "scheduledTime", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
