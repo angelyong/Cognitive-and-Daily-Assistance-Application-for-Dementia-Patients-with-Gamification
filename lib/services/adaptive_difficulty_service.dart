@@ -112,6 +112,12 @@ class AdaptiveDifficultyService {
     required int correctItems,
     required int hintsUsed,
     required int durationSeconds,
+    // What `accuracy` measures for THIS game (see GameMetricType). Defaults
+    // to tap-efficiency — the 9 tap-based games inherit it; only the 4
+    // first-attempt games (name_face/familiar_sound/word_picture_pairing/
+    // picture_recognition) pass firstAttempt explicitly. Stored so the risk
+    // score-drop signal never compares incompatible metrics.
+    String metricType = GameMetricType.tapEfficiency,
   }) async {
     final session = GameSession(
       sessionId: sessionId,
@@ -124,6 +130,8 @@ class AdaptiveDifficultyService {
       hintsUsed: hintsUsed,
       durationSeconds: durationSeconds,
       completedAt: DateTime.now(), // overwritten by FieldValue.serverTimestamp() in toMap()
+      metricType: metricType,
+      metricVersion: kCurrentMetricVersion,
     );
     await _db.collection('gameSessions').doc(sessionId).set(session.toMap());
 

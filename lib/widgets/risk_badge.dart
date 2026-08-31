@@ -149,9 +149,9 @@ Future<void> showRiskBreakdownDialog(
           _SignalRow(
             met: signals.scoreDrop,
             label: 'Cognitive score down 20%+',
-            detail: signals.sessionsConsidered < 10
-                ? 'Needs 10+ sessions (has ${signals.sessionsConsidered})'
-                : '${((signals.scoreDropPercent ?? 0) * 100).round()}% drop (last 5 vs previous 5 sessions)',
+            detail: signals.scoreDropPercent == null
+                ? 'Not enough comparable sessions yet (needs several at one game & level)'
+                : '${(signals.scoreDropPercent! * 100).round()}% average drop, comparing same game & level',
           ),
           _SignalRow(
             met: signals.inactivity,

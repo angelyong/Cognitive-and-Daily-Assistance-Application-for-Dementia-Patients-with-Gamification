@@ -8,6 +8,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// deterministic id (see AdaptiveDifficultyService.recordSessionAndAdapt)
 /// so an accidental double-submit overwrites the same doc rather than
 /// creating a duplicate.
+/// What a session's `accuracy` actually MEASURES — see
+/// DESIGN_DECISIONS_IMPLEMENTATION_PLAN.md #1. Under this app's errorless
+/// design, "items completed" is always 100%, so accuracy is really a
+/// struggle signal, computed one of two ways depending on the game. Stored
+/// on every new session so the risk score-drop signal only ever compares
+/// like-with-like (never a first-attempt game's accuracy against a
+/// tap-efficiency game's).
+class GameMetricType {
+  static const String firstAttempt = 'first_attempt'; // correct-on-first-try ÷ rounds
+  static const String tapEfficiency = 'tap_efficiency'; // correct taps ÷ total taps
+  static const String unknown = 'unknown'; // legacy docs written before this field
+}
+
+/// Bumped only if the struggle-signal formula itself changes, so a future
+/// change can't silently mix old and new numbers in the same comparison.
+/// Legacy docs with no field are treated as version 0.
+const int kCurrentMetricVersion = 1;
+
 class GameSession {
   final String sessionId;
   final String patientId;
@@ -19,6 +37,8 @@ class GameSession {
   final int hintsUsed;
   final int durationSeconds;
   final DateTime completedAt;
+  final String metricType; // see GameMetricType
+  final int metricVersion; // see kCurrentMetricVersion
 
   const GameSession({
     required this.sessionId,
@@ -31,6 +51,8 @@ class GameSession {
     required this.hintsUsed,
     required this.durationSeconds,
     required this.completedAt,
+    this.metricType = GameMetricType.unknown,
+    this.metricVersion = 0,
   });
 
   double get accuracy => totalItems == 0 ? 0.0 : correctItems / totalItems;
@@ -46,6 +68,8 @@ class GameSession {
         'hintsUsed': hintsUsed,
         'durationSeconds': durationSeconds,
         'completedAt': FieldValue.serverTimestamp(),
+        'metricType': metricType,
+        'metricVersion': metricVersion,
       };
 
   factory GameSession.fromMap(String sessionId, Map<String, dynamic> map) {
@@ -61,6 +85,8 @@ class GameSession {
       hintsUsed: (map['hintsUsed'] as num?)?.toInt() ?? 0,
       durationSeconds: (map['durationSeconds'] as num?)?.toInt() ?? 0,
       completedAt: ts is Timestamp ? ts.toDate() : DateTime.now(),
+      metricType: (map['metricType'] ?? GameMetricType.unknown) as String,
+      metricVersion: (map['metricVersion'] as num?)?.toInt() ?? 0,
     );
   }
 }

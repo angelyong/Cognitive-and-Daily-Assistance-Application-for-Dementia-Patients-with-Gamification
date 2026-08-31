@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:testproject/models/game_difficulty.dart';
+import 'package:testproject/models/game_session.dart';
 import 'package:testproject/services/adaptive_difficulty_service.dart';
 import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/theme/app_colors.dart';
@@ -278,6 +279,7 @@ class _NameFaceGameState extends State<NameFaceGame> {
             correctItems: _correctFirstTry,
             hintsUsed: _hintsUsedThisSession,
             durationSeconds: DateTime.now().difference(_sessionStart!).inSeconds,
+            metricType: GameMetricType.firstAttempt,
           );
           _config = _TierConfig.forLevel(_level);
         } catch (e) {

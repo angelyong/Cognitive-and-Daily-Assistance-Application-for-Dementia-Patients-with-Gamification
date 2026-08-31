@@ -170,21 +170,66 @@ class RiskService {
     return _MissedTasksResult(isSignal: consecutive >= 3, consecutiveCount: consecutive);
   }
 
-  // ---- Signal 2: cognitive score down >=20% (last 5 vs previous 5 of >=10 sessions) ----
+  // ---- Signal 2: cognitive score down >=20%, compared LIKE-WITH-LIKE ----
 
+  /// Recent-vs-previous window size per comparable bucket: the latest [_scoreDropK]
+  /// sessions vs the [_scoreDropK] before them.
+  static const int _scoreDropK = 3;
+
+  /// Bounded slice of recent history to bucket. Generous enough to give a few
+  /// games a full [_scoreDropK]×2 window each, still a single bounded read.
+  static const int _scoreDropFetchLimit = 60;
+
+  static const double _scoreDropThreshold = 0.20;
+
+  /// Rewritten to compare only like-with-like sessions
+  /// (DESIGN_DECISIONS_IMPLEMENTATION_PLAN.md #1): the old version pooled the
+  /// last 5 vs previous 5 accuracies across ALL games, but "accuracy" means
+  /// different things per game (first-attempt rate vs tap efficiency), so a
+  /// patient merely shifting which games they play could swing it. Now:
+  /// group sessions into buckets keyed by (gameId, difficultyLevel,
+  /// metricVersion), compute a recent-vs-previous drop within each eligible
+  /// bucket, and combine those per-bucket drops with EQUAL weight so a
+  /// frequently-played game can't dominate. If no bucket has enough
+  /// comparable sessions, the signal is simply not evaluable (false) — shown
+  /// as such in the breakdown, never as "no risk".
   Future<_ScoreDropResult> _evaluateScoreDrop(String patientId) async {
     final snap = await _db
         .collection('gameSessions')
         .where('patientId', isEqualTo: patientId)
         .orderBy('completedAt', descending: true)
-        .limit(10)
+        .limit(_scoreDropFetchLimit)
         .get();
 
     final List<Map<String, dynamic>> sessions = snap.docs.map((d) => d.data()).toList();
     final DateTime? mostRecentAt =
         sessions.isEmpty ? null : (sessions.first['completedAt'] as Timestamp?)?.toDate();
 
-    if (sessions.length < 10) {
+    // Bucket by (gameId, difficultyLevel, metricVersion). Sessions arrive
+    // newest-first, so each bucket's accuracy list stays newest-first too.
+    final Map<String, List<double>> buckets = {};
+    for (final s in sessions) {
+      final String gameId = (s['gameId'] ?? '') as String;
+      final int level = (s['difficultyLevel'] as num?)?.toInt() ?? 0;
+      final int version = (s['metricVersion'] as num?)?.toInt() ?? 0;
+      final String key = '$gameId|$level|$version';
+      (buckets[key] ??= <double>[]).add((s['accuracy'] as num?)?.toDouble() ?? 0.0);
+    }
+
+    final List<double> perBucketDrops = [];
+    for (final accs in buckets.values) {
+      if (accs.length < _scoreDropK * 2) continue; // not enough to compare
+      final recent = accs.sublist(0, _scoreDropK);
+      final previous = accs.sublist(_scoreDropK, _scoreDropK * 2);
+      final double avgRecent = recent.reduce((a, b) => a + b) / _scoreDropK;
+      final double avgPrev = previous.reduce((a, b) => a + b) / _scoreDropK;
+      if (avgPrev <= 0) continue; // can't express a % drop from a zero baseline
+      perBucketDrops.add((avgPrev - avgRecent) / avgPrev);
+    }
+
+    if (perBucketDrops.isEmpty) {
+      // Not evaluable — e.g. a recently-promoted patient whose sessions are
+      // split across levels so no single bucket has _scoreDropK*2 yet.
       return _ScoreDropResult(
         isSignal: false,
         dropPercent: null,
@@ -193,25 +238,10 @@ class RiskService {
       );
     }
 
-    double accuracyOf(Map<String, dynamic> s) => (s['accuracy'] as num?)?.toDouble() ?? 0.0;
-    final double avgLast5 = sessions.sublist(0, 5).map(accuracyOf).reduce((a, b) => a + b) / 5;
-    final double avgPrev5 = sessions.sublist(5, 10).map(accuracyOf).reduce((a, b) => a + b) / 5;
-
-    if (avgPrev5 <= 0) {
-      // A zero baseline can't meaningfully show a "20% drop" — guard the
-      // division rather than produce a nonsensical/infinite ratio.
-      return _ScoreDropResult(
-        isSignal: false,
-        dropPercent: null,
-        sessionsConsidered: sessions.length,
-        mostRecentSessionAt: mostRecentAt,
-      );
-    }
-
-    final double drop = (avgPrev5 - avgLast5) / avgPrev5;
+    final double combined = perBucketDrops.reduce((a, b) => a + b) / perBucketDrops.length;
     return _ScoreDropResult(
-      isSignal: drop >= 0.20,
-      dropPercent: drop,
+      isSignal: combined >= _scoreDropThreshold,
+      dropPercent: combined,
       sessionsConsidered: sessions.length,
       mostRecentSessionAt: mostRecentAt,
     );
