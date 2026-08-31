@@ -44,6 +44,10 @@ class AppColors {
   // coral above — this is a caregiver warning badge, not a category label,
   // and needs to read as urgent at a glance.
   static const Color riskRed = Color(0xFFD32F2F);
+  // Amber "monitor" tier — 2 of 3 risk signals active. A softer,
+  // less-urgent warning than riskRed's full 3-of-3 alert, but still clearly
+  // distinct from the no-risk (absent-badge) state.
+  static const Color riskAmber = Color(0xFFFFB020);
 }
 
 /// Reusable gradients so you never copy-paste the same LinearGradient again.

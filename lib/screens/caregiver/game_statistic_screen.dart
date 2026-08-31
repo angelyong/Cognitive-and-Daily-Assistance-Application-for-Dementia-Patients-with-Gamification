@@ -705,8 +705,24 @@ class _RiskStatusCardState extends State<_RiskStatusCard> {
       stream: RiskService().watchAssessment(widget.patientId),
       builder: (context, snapshot) {
         final RiskAssessment assessment = snapshot.data ?? RiskAssessment.initial;
-        final bool atRisk = assessment.level == RiskLevel.atRisk;
-        final Color statusColor = atRisk ? AppColors.riskRed : AppColors.greenCheck;
+        final RiskLevel level = assessment.level;
+        final bool atRisk = level == RiskLevel.atRisk;
+        final bool monitor = level == RiskLevel.monitor;
+        final Color statusColor = atRisk
+            ? AppColors.riskRed
+            : monitor
+                ? AppColors.riskAmber
+                : AppColors.greenCheck;
+        final String statusLabel = atRisk
+            ? 'At Risk'
+            : monitor
+                ? 'Needs Attention'
+                : 'No Risk Detected';
+        final IconData statusIcon = atRisk
+            ? Icons.warning_rounded
+            : monitor
+                ? Icons.error_outline
+                : Icons.shield_outlined;
 
         return Container(
           width: double.infinity,
@@ -714,7 +730,7 @@ class _RiskStatusCardState extends State<_RiskStatusCard> {
           decoration: BoxDecoration(
             color: AppColors.cardPurple,
             borderRadius: BorderRadius.circular(16),
-            border: atRisk ? Border.all(color: AppColors.riskRed, width: 1.5) : null,
+            border: (atRisk || monitor) ? Border.all(color: statusColor, width: 1.5) : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,7 +740,7 @@ class _RiskStatusCardState extends State<_RiskStatusCard> {
                 child: Row(
                   children: [
                     Icon(
-                      atRisk ? Icons.warning_rounded : Icons.shield_outlined,
+                      statusIcon,
                       color: statusColor,
                     ),
                     const SizedBox(width: 10),
@@ -733,7 +749,7 @@ class _RiskStatusCardState extends State<_RiskStatusCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            atRisk ? 'At Risk' : 'No Risk Detected',
+                            statusLabel,
                             style: TextStyle(
                               color: statusColor,
                               fontSize: 15,

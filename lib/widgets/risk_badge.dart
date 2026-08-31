@@ -17,7 +17,15 @@ class RiskBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (assessment.level != RiskLevel.atRisk) return const SizedBox.shrink();
+    // none → no badge at all. monitor → amber "Needs Attention". atRisk → red
+    // "At Risk". (Previously only atRisk rendered, so a 2-of-3 patient looked
+    // identical to a 0-of-3 one — see DESIGN_DECISIONS_IMPLEMENTATION_PLAN.md #4.)
+    if (assessment.level == RiskLevel.none) return const SizedBox.shrink();
+
+    final bool atRisk = assessment.level == RiskLevel.atRisk;
+    final Color color = atRisk ? AppColors.riskRed : AppColors.riskAmber;
+    final String label = atRisk ? 'At Risk' : 'Needs Attention';
+    final IconData icon = atRisk ? Icons.warning_rounded : Icons.error_outline;
 
     return InkWell(
       borderRadius: BorderRadius.circular(20),
@@ -25,18 +33,18 @@ class RiskBadge extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.riskRed.withOpacity(0.18),
+          color: color.withOpacity(0.18),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.riskRed, width: 1),
+          border: Border.all(color: color, width: 1),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.warning_rounded, size: 13, color: AppColors.riskRed),
-            SizedBox(width: 4),
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 4),
             Text(
-              'At Risk',
-              style: TextStyle(color: AppColors.riskRed, fontSize: 11, fontWeight: FontWeight.w700),
+              label,
+              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -84,8 +92,29 @@ Future<void> showRiskBreakdownDialog(
   RiskAssessment assessment,
 ) {
   final RiskSignals signals = assessment.signals;
-  final bool atRisk = assessment.level == RiskLevel.atRisk;
-  final Color statusColor = atRisk ? AppColors.riskRed : AppColors.greenCheck;
+  final RiskLevel level = assessment.level;
+  final bool atRisk = level == RiskLevel.atRisk;
+  final bool monitor = level == RiskLevel.monitor;
+  final Color statusColor = atRisk
+      ? AppColors.riskRed
+      : monitor
+          ? AppColors.riskAmber
+          : AppColors.greenCheck;
+  final String title = atRisk
+      ? '$patientName — At Risk'
+      : monitor
+          ? '$patientName — Needs Attention'
+          : '$patientName — No Risk Detected';
+  final IconData titleIcon = atRisk
+      ? Icons.warning_rounded
+      : monitor
+          ? Icons.error_outline
+          : Icons.shield_outlined;
+  final String intro = atRisk
+      ? 'All 3 signals below are true at the same time:'
+      : monitor
+          ? '2 of the 3 signals below are active — an early warning. At Risk (red) triggers only when all 3 are true at once:'
+          : 'At Risk triggers only when all 3 signals below are true at once (2 of 3 shows an amber early warning):';
 
   return showDialog<void>(
     context: context,
@@ -93,11 +122,11 @@ Future<void> showRiskBreakdownDialog(
       backgroundColor: AppColors.cardPurple,
       title: Row(
         children: [
-          Icon(atRisk ? Icons.warning_rounded : Icons.shield_outlined, color: statusColor),
+          Icon(titleIcon, color: statusColor),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              atRisk ? '$patientName — At Risk' : '$patientName — No Risk Detected',
+              title,
               style: const TextStyle(color: Colors.white, fontSize: 17),
             ),
           ),
@@ -108,9 +137,7 @@ Future<void> showRiskBreakdownDialog(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            atRisk
-                ? 'All 3 signals below were true at the same time:'
-                : 'At Risk triggers only when all 3 signals below are true at once:',
+            intro,
             style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
           const SizedBox(height: 12),

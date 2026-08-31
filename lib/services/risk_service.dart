@@ -78,7 +78,7 @@ class RiskService {
       inactivity: inactivity.isSignal,
       inactivityDays: inactivity.days,
     );
-    final RiskLevel level = signals.allThree ? RiskLevel.atRisk : RiskLevel.none;
+    final RiskLevel level = signals.level;
 
     final docRef = _userDoc(patientId);
     await _db.runTransaction((tx) async {

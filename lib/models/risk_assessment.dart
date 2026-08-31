@@ -14,19 +14,38 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///      game — and only evaluated once >=10 total sessions exist).
 ///   3. inactivity   — >=3 days since the patient's last recorded activity
 ///      (a game session or an app login).
-/// Deliberately a strict AND (not a weighted score), so a single bad day
-/// never raises a false alarm — same "err toward caution, but require real
-/// evidence" spirit as Part 1's difficulty engine.
-enum RiskLevel { none, atRisk }
+/// A graded scale, not a single strict-AND boolean: all THREE signals →
+/// [atRisk] (red), exactly TWO → [monitor] (amber, an earlier/softer
+/// heads-up), zero or one → [none]. The red 3-of-3 alert keeps the original
+/// "require real evidence, never false-alarm on one bad day" spirit; the
+/// amber tier only ADDS an early-warning state that used to be invisible
+/// (a 2-of-3 patient previously looked identical to a 0-of-3 one).
+enum RiskLevel { none, monitor, atRisk }
 
 extension RiskLevelX on RiskLevel {
   static const String firestoreField = 'currentRiskLevel';
 
   static RiskLevel fromFirestore(String? value) {
-    return value == 'at_risk' ? RiskLevel.atRisk : RiskLevel.none;
+    switch (value) {
+      case 'at_risk':
+        return RiskLevel.atRisk;
+      case 'monitor':
+        return RiskLevel.monitor;
+      default:
+        return RiskLevel.none;
+    }
   }
 
-  String get firestoreValue => this == RiskLevel.atRisk ? 'at_risk' : 'none';
+  String get firestoreValue {
+    switch (this) {
+      case RiskLevel.atRisk:
+        return 'at_risk';
+      case RiskLevel.monitor:
+        return 'monitor';
+      case RiskLevel.none:
+        return 'none';
+    }
+  }
 }
 
 /// Supporting stats behind [RiskAssessment.level] — feeds the caregiver's
@@ -84,6 +103,18 @@ class RiskSignals {
       };
 
   bool get allThree => missedTasks && scoreDrop && inactivity;
+
+  /// How many of the 3 signals are currently active (0..3).
+  int get metCount =>
+      (missedTasks ? 1 : 0) + (scoreDrop ? 1 : 0) + (inactivity ? 1 : 0);
+
+  /// The graded level these signals map to: 3 → at-risk, 2 → monitor,
+  /// 0-1 → none. Single source of truth for the none/monitor/at-risk cutoffs.
+  RiskLevel get level {
+    if (metCount >= 3) return RiskLevel.atRisk;
+    if (metCount == 2) return RiskLevel.monitor;
+    return RiskLevel.none;
+  }
 }
 
 /// Cached read model for `users/{patientId}`'s `currentRiskLevel` /
