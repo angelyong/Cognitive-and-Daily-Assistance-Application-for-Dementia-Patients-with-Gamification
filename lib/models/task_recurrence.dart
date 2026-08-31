@@ -159,6 +159,16 @@ class TaskSeries {
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+/// The Monday of [d]'s calendar week (DateTime.weekday: Mon=1..Sun=7).
+/// Used to bucket custom "every N weeks" recurrence by real calendar weeks
+/// instead of consecutive 7-day blocks counted from the series' own start
+/// date — see [_isOccurrence]'s weeks branch for why that distinction
+/// matters (HIDDEN_BUGS.md finding #6).
+DateTime _mondayOf(DateTime d) {
+  final DateTime day = _dateOnly(d);
+  return day.subtract(Duration(days: day.weekday - 1));
+}
+
 int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 
 /// Same day-of-month as the start date, clamped to the last day of the
@@ -210,7 +220,13 @@ bool _isOccurrence(TaskSeries series, DateTime day) {
               ? series.rule.weekdays
               : [start.weekday];
           if (!weekdays.contains(day.weekday)) return false;
-          final int weekIndex = day.difference(start).inDays ~/ 7;
+          // Bucketed by calendar week (Monday-start), not by consecutive
+          // 7-day blocks from the start date — the latter could put a
+          // weekday that's technically in the FOLLOWING calendar week into
+          // the same bucket as the start date (whenever start isn't a
+          // Monday), producing visually uneven gaps for interval-1 and
+          // wrong inclusion/exclusion for interval>1 (HIDDEN_BUGS.md #6).
+          final int weekIndex = _mondayOf(day).difference(_mondayOf(start)).inDays ~/ 7;
           return weekIndex % series.rule.interval == 0;
         case RecurrenceUnit.months:
           final int monthsSince =

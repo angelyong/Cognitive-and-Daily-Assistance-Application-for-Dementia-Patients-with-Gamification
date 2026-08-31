@@ -212,7 +212,12 @@ class _SpotTheDifferenceGameState extends State<SpotTheDifferenceGame> {
     _panelA = List<_SceneShape>.from(_baseShapes);
     _panelB = List<_SceneShape>.from(_baseShapes);
 
-    final List<int> diffIndices = _diffOrder.sublist(0, _config.differenceCount);
+    // Clamped defensively: _diffOrder only has 4 entries. If a future level
+    // config ever raises differenceCount past 4 without also extending
+    // _diffOrder, this caps at 4 differences instead of throwing a
+    // RangeError from sublist() (see HIDDEN_BUGS.md finding #5).
+    final int diffCount = _config.differenceCount.clamp(0, _diffOrder.length);
+    final List<int> diffIndices = _diffOrder.sublist(0, diffCount);
     for (final index in diffIndices) {
       _panelB[index] = _panelBOverride(index);
     }

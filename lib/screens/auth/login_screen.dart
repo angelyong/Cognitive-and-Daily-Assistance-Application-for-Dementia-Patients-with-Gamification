@@ -239,8 +239,21 @@ Future<void> _signIn() async {
       return;
     }
 
-    String role = userData['role'];
+    // Unlike every other Firestore field read in this codebase, this used
+    // to be an unchecked `String role = userData['role'];` cast — a user
+    // doc missing `role` (hand-edited in console, migration gap) threw a
+    // raw TypeError instead of failing gracefully (HIDDEN_BUGS.md #7).
+    final String? role = userData['role'] as String?;
     print("Role: $role");
+
+    if (role == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Your account is missing a role — please contact support."),
+        ),
+      );
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Login Successful')),
