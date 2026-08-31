@@ -24,41 +24,71 @@ succeeded after all three.
 
 ---
 
-## 2. Codebase cleanup items explicitly deferred (`CODEBASE_CLEANUP.md`)
+## 2. Codebase cleanup items (`CODEBASE_CLEANUP.md`) — small items now fixed, two large refactors still deferred
 
 Items 1–4 (dead file removal, file/variable naming, try/catch wrapping)
-were executed and committed. Items 5–6 were deferred as "substantial,
-behavior-touching refactors" needing their own focused session:
+were executed earlier this session. The two large, explicitly-deferred
+refactors are **still deferred, on purpose** — see below. Every smaller
+"analysis only" item from the same report is now fixed:
+
+- ✅ **`AuthService`'s 3 methods unified.** `registerUser`/`loginUser`/`logout`
+  each used to fail differently (nullable string / rethrow / bool). All 3
+  now return a shared `AuthResult<T>` (`.success`/`.data`/`.error`), and
+  none of them throw — every caller (`register_screen.dart`,
+  `login_screen.dart`, `side_drawer.dart`'s logout) checks `.success` the
+  same way. `lib/services/auth_service.dart`.
+- ✅ **`currentUser!.uid` force-unwraps guarded.** Was in 5 screens
+  (`game_statistic_screen`, `create_task_screen`, `activity_progress_screen`,
+  caregiver `task_history_screen`, `add_patient_screen`) plus
+  `patient_performance_screen` (added after the original report, same
+  pattern). Added a shared `requireSessionUid(context)` helper
+  (`lib/widgets/session_guard.dart`) — returns null instead of crashing on
+  a missing session, schedules a redirect to `/login`, and the screen shows
+  a brief `SessionRedirectPlaceholder` for the one frame in between. All 6
+  screens now use it.
+- ✅ **Ungated `print()` calls gated.** `auth_service.dart` (7, including a
+  raw UID) and `login_screen.dart` now wrap every `print()` in
+  `if (kDebugMode)`, matching `notification_service.dart`'s existing
+  pattern.
+- ✅ **`pubspec.yaml` dependency check done.** `confetti`, `audioplayers`,
+  `webview_flutter`, `table_calendar` — each confirmed genuinely imported
+  by exactly one file. Nothing unused; nothing removed.
+
+`flutter analyze` (full project) — 0 errors, 53 pre-existing info/warning
+lints, none new. `flutter build apk --debug` succeeded.
+
+**Still deferred, on purpose — these are the two CODEBASE_CLEANUP.md
+explicitly called "substantial, behavior-touching refactors" needing their
+own focused session, plus two related items in the same category:**
 
 - **Extract a shared lifecycle base class for the 13 game files** — every
   game duplicates the same `_uid`/`_level`/`_config`/`_loadingLevel`/
   `_difficultyService` fields, `_loadLevelAndStart()`, hint-counting
   pattern, and `_finishGame()` shape. Largest duplication surface in the
-  codebase; not attempted.
-- **Split `FirestoreService` (384 lines, 28 call sites) and `side_drawer.dart`
-  (668 lines, 6 classes in one file)** into smaller, single-responsibility
-  files/classes. Design changes, not mechanical — not attempted.
-
-Smaller items flagged as "analysis only, not acted on" in the same report
-and still true:
-- `AuthService`'s 3 methods (`registerUser`/`loginUser`/`logout`) each fail
-  differently (nullable string / rethrow / bool) — no unified error
-  contract.
-- `currentUser!.uid` unguarded force-unwraps remain in 5 screens
-  (`game_statistic_screen` [was `statistics_screen`], `create_task_screen`,
-  `activity_progress_screen`, caregiver `task_history_screen`,
-  `add_patient_screen`) — each crashes on construction with no signed-in
-  user.
-- Ungated `print()` calls remain in `auth_service.dart` (7, including a raw
-  UID) and `login_screen.dart` — `notification_service.dart`'s
-  `kDebugMode`-gated pattern was never extended to these two.
+  codebase, and the highest-value refactor available — but it means
+  changing the control flow of all 13 already-working game files at once,
+  and I have no way to interactively play through each one afterward to
+  catch a subtle regression. Not attempted this pass either.
+- **Split `FirestoreService` (384 lines, 28 call sites) and
+  `side_drawer.dart` (668 lines, 6 classes in one file)** into smaller,
+  single-responsibility files/classes. Lower risk than the above, but still
+  a design change touching what every caller imports — not attempted.
 - `create_task_screen.dart`'s `build()` is ~415 lines; `home_screen.dart`
   and `patient_dashboard.dart` duplicate most of their task-rendering logic
   (`_visibleDocs`/`_toggleTaskStatus`/the per-occurrence tally). Neither
-  attempted.
-- `pubspec.yaml`'s `confetti`/`audioplayers`/`webview_flutter`/
-  `table_calendar` dependencies were never individually verified as still
-  used.
+  attempted — both are core, frequently-used screens where a slip would be
+  visible immediately to every caregiver/patient.
+
+My honest read: these four are pure code-organization refactors with no
+functional bug attached, on files this app depends on constantly. I can
+verify a mechanical fix compiles and builds, but not that a sweeping
+control-flow change across 13 gameplay screens or two dashboards behaves
+identically on-device — I have no way to click through the app myself in
+this environment. Given that, and that these were already flagged as
+needing their own dedicated, individually-verified session, I've left them
+alone rather than rushing a change I can't fully verify. Say the word if
+you'd like me to tackle one of these specifically — happy to take them one
+at a time rather than all at once, so each can be checked in isolation.
 
 ---
 

@@ -7,6 +7,7 @@ import 'package:testproject/services/patient_account_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import 'package:testproject/widgets/dementia_badges.dart';
+import 'package:testproject/widgets/session_guard.dart';
 import '../../widgets/side_drawer.dart';
 
 /// UC: Add & Manage Patient Accounts.
@@ -27,7 +28,8 @@ class AddPatientScreen extends StatefulWidget {
 
 class _AddPatientScreenState extends State<AddPatientScreen> {
   final PatientAccountService _patientService = PatientAccountService();
-  final String caregiverId = FirebaseAuth.instance.currentUser!.uid;
+  late final String caregiverId;
+  bool _hasSession = true;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -38,6 +40,17 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
   DementiaStage? _selectedStage;
   DementiaType? _selectedType;
+
+  @override
+  void initState() {
+    super.initState();
+    final String? uid = requireSessionUid(context);
+    if (uid == null) {
+      _hasSession = false;
+      return;
+    }
+    caregiverId = uid;
+  }
 
   @override
   void dispose() {
@@ -222,6 +235,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasSession) return const SessionRedirectPlaceholder();
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       drawer: const SideDrawer(),

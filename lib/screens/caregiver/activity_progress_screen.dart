@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -9,6 +8,7 @@ import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import 'package:testproject/theme/app_text_styles.dart';
+import 'package:testproject/widgets/session_guard.dart';
 import 'package:testproject/widgets/timeline_card.dart';
 import '../../widgets/side_drawer.dart';
 import '../task_detail_screen.dart';
@@ -37,7 +37,8 @@ class ActivityProgress extends StatefulWidget {
 
 class _ActivityProgressState extends State<ActivityProgress> {
   final FirestoreService _firestoreService = FirestoreService();
-  final String caregiverId = FirebaseAuth.instance.currentUser!.uid;
+  late final String caregiverId;
+  bool _hasSession = true;
 
   List<Map<String, dynamic>> _patients = [];
   bool _loadingPatients = true;
@@ -49,6 +50,12 @@ class _ActivityProgressState extends State<ActivityProgress> {
   @override
   void initState() {
     super.initState();
+    final String? uid = requireSessionUid(context);
+    if (uid == null) {
+      _hasSession = false;
+      return;
+    }
+    caregiverId = uid;
     _loadPatients();
   }
 
@@ -133,6 +140,7 @@ class _ActivityProgressState extends State<ActivityProgress> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasSession) return const SessionRedirectPlaceholder();
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       drawer: const SideDrawer(),

@@ -273,14 +273,14 @@ Future<void> showLogoutConfirmation(BuildContext context) async {
 
   if (confirm != true) return;
 
-  final bool success = await AuthService().logout();
+  final AuthResult<void> result = await AuthService().logout();
   if (!context.mounted) return;
 
-  if (success) {
+  if (result.success) {
     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   } else {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logout failed.')),
+      SnackBar(content: Text(result.error ?? 'Logout failed.')),
     );
   }
 }

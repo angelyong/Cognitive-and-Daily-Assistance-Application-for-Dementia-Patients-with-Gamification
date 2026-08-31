@@ -1,5 +1,4 @@
 import 'package:fl_chart/fl_chart.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +9,7 @@ import 'package:testproject/services/performance_analytics_service.dart';
 import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import 'package:testproject/theme/app_text_styles.dart';
+import 'package:testproject/widgets/session_guard.dart';
 import 'package:testproject/widgets/side_drawer.dart';
 import 'game_statistic_screen.dart';
 
@@ -37,7 +37,8 @@ class PatientPerformanceScreen extends StatefulWidget {
 
 class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  final String _caregiverId = FirebaseAuth.instance.currentUser!.uid;
+  late final String _caregiverId;
+  bool _hasSession = true;
 
   List<Map<String, dynamic>> _patients = [];
   bool _loadingPatients = true;
@@ -56,6 +57,12 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
   @override
   void initState() {
     super.initState();
+    final String? uid = requireSessionUid(context);
+    if (uid == null) {
+      _hasSession = false;
+      return;
+    }
+    _caregiverId = uid;
     _selectedPatientId = widget.initialPatientId;
     _loadPatients();
   }
@@ -139,6 +146,7 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasSession) return const SessionRedirectPlaceholder();
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       drawer: const SideDrawer(),

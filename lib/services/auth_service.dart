@@ -1,20 +1,41 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:testproject/services/streak_service.dart';
 import 'package:testproject/models/streak_data.dart';
+
+/// Unified success/failure contract for every [AuthService] method
+/// (CODEBASE_CLEANUP.md §5: the 3 methods used to each fail differently —
+/// a nullable error string, a rethrow, and a bool — leaving 3 different
+/// error-handling shapes for callers to keep straight). [data] is only
+/// meaningful when [success] is true; [error] only when it's false.
+class AuthResult<T> {
+  final bool success;
+  final T? data;
+  final String? error;
+
+  const AuthResult.success([this.data])
+      : success = true,
+        error = null;
+
+  const AuthResult.failure(this.error)
+      : success = false,
+        data = null;
+}
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<String?> registerUser({
+  Future<AuthResult<void>> registerUser({
     required String name,
     required String email,
     required String password,
     required String role,
   }) async {
     try {
-      print("Creating User...");
+      if (kDebugMode) print("Creating User...");
 
       UserCredential userCredential =
           await _auth.createUserWithEmailAndPassword(
@@ -22,7 +43,7 @@ class AuthService {
         password: password.trim(),
       );
 
-      print(userCredential.user!.uid);
+      if (kDebugMode) print(userCredential.user!.uid);
 
       await _firestore
           .collection('users')
@@ -38,17 +59,17 @@ class AuthService {
         'lastLoginDate': null,
         'createdAt': Timestamp.now(),
       });
-      print("Firestore Saved");
-      return null;
+      if (kDebugMode) print("Firestore Saved");
+      return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
-      return e.message;
+      return AuthResult.failure(e.message);
     } catch (e) {
-      print(e.toString());
-      return "Registration failed.";
+      if (kDebugMode) print(e.toString());
+      return const AuthResult.failure("Registration failed.");
     }
   }
 
-Future<Map<String, dynamic>?> loginUser({
+  Future<AuthResult<Map<String, dynamic>>> loginUser({
     required String email,
     required String password,
   }) async {
@@ -65,7 +86,7 @@ Future<Map<String, dynamic>?> loginUser({
           await _firestore.collection('users').doc(uid).get();
 
       if (!userDoc.exists) {
-        return null;
+        return const AuthResult.failure("User data not found");
       }
 
       final data = userDoc.data() as Map<String, dynamic>;
@@ -77,28 +98,30 @@ Future<Map<String, dynamic>?> loginUser({
         data['streakResult'] = result;
       }
 
-      return data;
+      return AuthResult.success(data);
     } on FirebaseAuthException catch (e) {
-      print("FirebaseAuthException");
-      print("Code: ${e.code}");
-      print("Message: ${e.message}");
-      rethrow;
+      if (kDebugMode) {
+        print("FirebaseAuthException");
+        print("Code: ${e.code}");
+        print("Message: ${e.message}");
+      }
+      return AuthResult.failure(e.message ?? e.code);
     } catch (e) {
-      print("Other error: $e");
-      rethrow;
+      if (kDebugMode) print("Other error: $e");
+      return AuthResult.failure(e.toString());
     }
   }
 
-  Future<bool> logout() async {
-  try {
-    await _auth.signOut();
-    return true;
-  } on FirebaseAuthException catch (e) {
-    print(e.message);
-    return false;
-  } catch (e) {
-    print(e.toString());
-    return false;
+  Future<AuthResult<void>> logout() async {
+    try {
+      await _auth.signOut();
+      return const AuthResult.success();
+    } on FirebaseAuthException catch (e) {
+      if (kDebugMode) print(e.message);
+      return AuthResult.failure(e.message);
+    } catch (e) {
+      if (kDebugMode) print(e.toString());
+      return AuthResult.failure(e.toString());
+    }
   }
-}
 }

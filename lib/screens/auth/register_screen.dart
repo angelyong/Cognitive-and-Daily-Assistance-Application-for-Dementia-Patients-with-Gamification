@@ -195,7 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Proceed with registration
-    String? result = await AuthService().registerUser(
+    final AuthResult<void> result = await AuthService().registerUser(
       name: nameController.text,
       email: emailController.text,
       password: passwordController.text,
@@ -204,14 +204,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!mounted) return;
 
-    if (result == null) {
+    if (result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registration Successful')),
       );
       Navigator.pushReplacementNamed(context, '/login');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result)),
+        SnackBar(content: Text(result.error ?? 'Registration failed.')),
       );
     }
   }

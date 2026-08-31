@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:testproject/models/occurrence_status.dart';
 import 'package:testproject/models/task_recurrence.dart';
 import 'package:testproject/services/firestore_service.dart';
 import 'package:testproject/services/notification_service.dart';
+import 'package:testproject/widgets/session_guard.dart';
 import '../../widgets/side_drawer.dart';
 
 import 'package:testproject/theme/app_colors.dart';
@@ -36,7 +36,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _dosageController = TextEditingController();
-  final String caregiverId = FirebaseAuth.instance.currentUser!.uid;
+  late final String caregiverId;
+  bool _hasSession = true;
 
   bool get _isEditing => widget.taskId != null;
 
@@ -98,6 +99,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   @override
   void initState() {
     super.initState();
+    final String? uid = requireSessionUid(context);
+    if (uid == null) {
+      _hasSession = false;
+      return;
+    }
+    caregiverId = uid;
     _prefillFromExistingData();
     _loadPatients();
   }
@@ -559,6 +566,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasSession) return const SessionRedirectPlaceholder();
     final bool reminderSet = _reminderDate != null && _reminderTime != null;
 
     return Scaffold(

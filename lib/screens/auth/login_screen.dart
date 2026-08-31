@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:testproject/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -222,21 +223,24 @@ Future<void> _signIn() async {
   }
 
   try {
-    final userData = await AuthService().loginUser(
+    final AuthResult<Map<String, dynamic>> result = await AuthService().loginUser(
       email: emailController.text.trim(),
       password: passwordController.text.trim(),
     );
 
-    print("Login Success");
-    print(userData);
-
     if (!mounted) return;
 
-    if (userData == null) {
+    if (!result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User data not found')),
+        SnackBar(content: Text(result.error ?? 'Login failed.')),
       );
       return;
+    }
+
+    final userData = result.data!;
+    if (kDebugMode) {
+      print("Login Success");
+      print(userData);
     }
 
     // Unlike every other Firestore field read in this codebase, this used
@@ -244,7 +248,7 @@ Future<void> _signIn() async {
     // doc missing `role` (hand-edited in console, migration gap) threw a
     // raw TypeError instead of failing gracefully (HIDDEN_BUGS.md #7).
     final String? role = userData['role'] as String?;
-    print("Role: $role");
+    if (kDebugMode) print("Role: $role");
 
     if (role == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -309,9 +313,11 @@ Future<void> _signIn() async {
       Navigator.pushReplacementNamed(context, '/homescreen');
     }
   } on FirebaseAuthException catch (e) {
-    print("FirebaseAuthException");
-    print("Code: ${e.code}");
-    print("Message: ${e.message}");
+    if (kDebugMode) {
+      print("FirebaseAuthException");
+      print("Code: ${e.code}");
+      print("Message: ${e.message}");
+    }
 
     if (!mounted) return;
 
@@ -319,8 +325,10 @@ Future<void> _signIn() async {
       SnackBar(content: Text("${e.code}: ${e.message}")),
     );
   } catch (e, stackTrace) {
-    print("LOGIN ERROR: $e");
-    print(stackTrace);
+    if (kDebugMode) {
+      print("LOGIN ERROR: $e");
+      print(stackTrace);
+    }
 
     if (!mounted) return;
 

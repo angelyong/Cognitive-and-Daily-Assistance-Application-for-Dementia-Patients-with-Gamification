@@ -2,7 +2,7 @@
 
 Full audit of `lib/` (66 Dart files, ~19,400 lines) as of 2026-08-23. Every finding below was verified by reading the actual file or cross-referencing imports project-wide — nothing here was guessed.
 
-## Status: items 1-4 executed, items 5-6 deferred
+## Status: items 1-4 executed; the small §5 gaps are now closed too; items 5-6 (the two large refactors) remain deferred
 
 This project had no git repository, so before making any change a repo was initialized and the pre-cleanup state committed as a baseline (`git log` shows it as "Baseline snapshot before codebase cleanup") — every change below is its own commit on top of that, so anything can be reverted with `git revert` or `git diff` against the baseline if something looks wrong.
 
@@ -11,10 +11,12 @@ This project had no git repository, so before making any change a repo was initi
 2. ✅ Standardized the `FirestoreService` variable name to `_firestoreService` (fields) / `firestoreService` (the one local-variable case) across all 6 outlier files (see §3).
 3. ✅ Wrapped all 13 games' session-save calls in try/catch with a friendly SnackBar (see §5) — closes the gap flagged there.
 4. ✅ Renamed all 7 mis-cased files to snake_case and updated every import site (see §2) — one extra file, `CognitiveExerciseScreen.dart`, was found and fixed during execution that the original audit missed.
+5. ✅ (Later pass) The smaller §5 items originally left as "analysis only": `AuthService`'s 3 inconsistent error contracts are now unified behind one `AuthResult<T>` type; the 6 unguarded `currentUser!.uid` force-unwraps (5 originally flagged + `patient_performance_screen.dart`, added after this report) now fail gracefully via a shared `requireSessionUid()` guard instead of crashing on a null session; the remaining ungated `print()` calls in `auth_service.dart`/`login_screen.dart` are now `kDebugMode`-gated; `pubspec.yaml`'s `confetti`/`audioplayers`/`webview_flutter`/`table_calendar` were checked and are all genuinely used (nothing removed). See "What changed in the later pass" below.
 
-**Deferred** (not attempted — see the end of this file for why):
+**Still deferred** (not attempted — see "Why items 5 and 6 were deferred" below, which still applies):
 5. ⏳ Extracting a shared base class for the 13 games' duplicated lifecycle (§6).
 6. ⏳ Splitting `SideDrawer.dart` and `FirestoreService` into smaller, single-responsibility files (§4).
+7. ⏳ `create_task_screen.dart`'s ~415-line `build()`, and `home_screen.dart`/`patient_dashboard.dart`'s duplicated task-rendering logic (§6) — not attempted in the later pass either, for the same reason: real refactors of core, working screens, not mechanical fixes.
 
 ## 1. Files removed ✅
 
@@ -67,9 +69,9 @@ One mechanical hazard worth recording: the first pass of this rename did a blind
 
 ## 5. Error handling gaps
 
-- **`AuthService`'s 3 methods each fail differently**: `registerUser` catches `FirebaseAuthException` and returns `e.message` as a nullable string (null = success); `loginUser` catches, logs, and `rethrow`s; `logout` catches and returns a `bool`. Not changed — a real fix means picking one contract and updating every caller, which is a design decision, not a mechanical one.
-- **`currentUser!.uid` (unguarded force-unwrap) still appears in 5 screens**: `statistics_screen`, `create_task_screen`, `activity_progress_screen`, `task_history_screen` (caregiver), `add_patient_screen`. Not changed — each crashes immediately on screen construction if reached with no signed-in user. Low probability given normal navigation, but worth a guard clause redirecting to `/login` if you want to harden this.
-- **Ungated `print()` calls** remain in `auth_service.dart` (7, including printing a raw UID) and `login_screen.dart`. Not changed. `notification_service.dart` already gates nearly all of its prints behind `if (kDebugMode)` — that's the pattern worth extending to the other two.
+- ✅ **`AuthService`'s 3 methods each fail differently**: `registerUser` catches `FirebaseAuthException` and returns `e.message` as a nullable string (null = success); `loginUser` catches, logs, and `rethrow`s; `logout` catches and returns a `bool`. **Fixed (later pass):** all 3 now return a shared `AuthResult<T>` (`success`/`data`/`error`), and none of them `rethrow` anymore — every caller (`register_screen.dart`, `login_screen.dart`, `side_drawer.dart`'s logout) checks `.success` the same way.
+- ✅ **`currentUser!.uid` (unguarded force-unwrap) appeared in 5 screens**: `statistics_screen` (now `game_statistic_screen`), `create_task_screen`, `activity_progress_screen`, `task_history_screen` (caregiver), `add_patient_screen` — plus `patient_performance_screen`, added after this report with the same pattern. **Fixed (later pass):** added a shared `requireSessionUid(context)` helper (`lib/widgets/session_guard.dart`) that returns null instead of throwing on a missing session, schedules a redirect to `/login`, and shows a small `SessionRedirectPlaceholder` for the one frame in between. All 6 screens now use it.
+- ✅ **Ungated `print()` calls** were in `auth_service.dart` (7, including printing a raw UID) and `login_screen.dart`. **Fixed (later pass):** all wrapped in `if (kDebugMode)`, matching `notification_service.dart`'s existing pattern.
 - ✅ **All 13 games' `_finishGame()` now wrap their `AdaptiveDifficultyService.recordSessionAndAdapt(...)` and `FirestoreService.awardPoints(...)` calls in try/catch.** On failure, a red SnackBar reads "Couldn't save your progress — check your connection and try again," and the completion dialog still shows either way (the patient's session did finish from their point of view — a save failure shouldn't strand them on a frozen screen or hide the positive reinforcement of finishing). This closes the gap flagged in the original audit, where I'd introduced this exact issue myself while wiring the adaptive difficulty engine.
 
 ## 6. Complexity hotspots — analysis only, not acted on
@@ -86,6 +88,8 @@ By line count, the largest files are `create_task_screen.dart` (975), `home_scre
 - The `enum` + `XExtension` pattern for anything Firestore-backed is applied consistently everywhere it's needed.
 - `theme/app_colors.dart` / `app_decorations.dart` / `app_text_styles.dart` cleanly separate color, decoration, and text-style concerns.
 - Doc comments throughout consistently explain *why* a decision was made rather than *what* the code does.
+
+**pubspec.yaml dependency check** (mentioned in §1 as "not investigated"): checked directly — `confetti`, `audioplayers`, `webview_flutter`, and `table_calendar` are each imported by exactly one file (`login_success_effect.dart`, likely the same or a sound helper, `reward_game_screen.dart`, and `activity_progress_screen.dart` respectively). All genuinely used; nothing removed from `pubspec.yaml`.
 
 ## Why items 5 and 6 were deferred
 

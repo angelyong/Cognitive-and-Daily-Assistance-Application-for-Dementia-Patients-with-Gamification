@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -16,6 +15,7 @@ import 'package:testproject/theme/app_colors.dart';
 import 'package:testproject/theme/app_decorations.dart';
 import 'package:testproject/theme/app_text_styles.dart';
 import 'package:testproject/widgets/risk_badge.dart';
+import 'package:testproject/widgets/session_guard.dart';
 import '../../widgets/side_drawer.dart';
 
 /// PART 1 (adaptive_difficulty_and_risk_indicator_prompt.md), Section 1.6:
@@ -52,7 +52,8 @@ class GameStatisticScreen extends StatefulWidget {
 
 class _GameStatisticScreenState extends State<GameStatisticScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  final String _caregiverId = FirebaseAuth.instance.currentUser!.uid;
+  late final String _caregiverId;
+  bool _hasSession = true;
 
   List<Map<String, dynamic>> _patients = [];
   bool _loadingPatients = true;
@@ -80,6 +81,12 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
   @override
   void initState() {
     super.initState();
+    final String? uid = requireSessionUid(context);
+    if (uid == null) {
+      _hasSession = false;
+      return;
+    }
+    _caregiverId = uid;
     _selectedPatientId = widget.initialPatientId;
     _loadPatients();
   }
@@ -110,6 +117,7 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasSession) return const SessionRedirectPlaceholder();
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       drawer: const SideDrawer(),
