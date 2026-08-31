@@ -219,33 +219,34 @@ class RiskService {
 
   // ---- Signal 3: >=3 days of inactivity ----
 
-  /// "Last activity" = the more recent of the patient's last game session
-  /// and their last recorded app login ([StreakData.lastLoginDate], the
-  /// same field the streak screen already reads) — a reasonable, bounded
-  /// proxy given this app has no dedicated "last seen" tracker; documented
-  /// rather than silently assumed, same spirit as the other two signals'
-  /// scope notes above.
+  /// "Last activity" = the most recent of: the dedicated `lastActiveAt`
+  /// tracker (written on real patient activity — see
+  /// FirestoreService.touchLastActive), the patient's last game session, and
+  /// their last recorded app login (`lastLoginDate`). Taking the max means
+  /// the newer, more accurate `lastActiveAt` wins when present, while old
+  /// accounts that predate it still work via the session/login fallback —
+  /// and "more recent" only ever reduces false "inactive" flags. See
+  /// DESIGN_DECISIONS_IMPLEMENTATION_PLAN.md #2.
   Future<_InactivityResult> _evaluateInactivity(
     String patientId,
     DateTime? mostRecentSessionAt,
   ) async {
-    final userDoc = await _userDoc(patientId).get();
-    final loginTs = userDoc.data()?['lastLoginDate'];
+    final data = (await _userDoc(patientId).get()).data();
+    final activeTs = data?['lastActiveAt'];
+    final loginTs = data?['lastLoginDate'];
+    final DateTime? lastActive = activeTs is Timestamp ? activeTs.toDate() : null;
     final DateTime? lastLogin = loginTs is Timestamp ? loginTs.toDate() : null;
 
-    DateTime? lastActivity;
-    if (mostRecentSessionAt != null && lastLogin != null) {
-      lastActivity = mostRecentSessionAt.isAfter(lastLogin) ? mostRecentSessionAt : lastLogin;
-    } else {
-      lastActivity = mostRecentSessionAt ?? lastLogin;
-    }
+    final List<DateTime> candidates =
+        [lastActive, mostRecentSessionAt, lastLogin].whereType<DateTime>().toList();
 
-    if (lastActivity == null) {
+    if (candidates.isEmpty) {
       // Never active at all — trivially satisfies "inactive", but with no
       // day count to show (there's nothing to count from).
       return const _InactivityResult(isSignal: true, days: null);
     }
 
+    final DateTime lastActivity = candidates.reduce((a, b) => a.isAfter(b) ? a : b);
     final int days = DateTime.now().difference(lastActivity).inDays;
     return _InactivityResult(isSignal: days >= 3, days: days);
   }

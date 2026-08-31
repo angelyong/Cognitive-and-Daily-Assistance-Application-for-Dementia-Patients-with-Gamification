@@ -729,6 +729,15 @@ Future<void> _applyOccurrenceResponse(
     final DateTime occurrenceDate = DateFormat('yyyy-MM-dd').parse(dateKey);
     await firestoreService.setOccurrenceStatus(taskId, occurrenceDate, status);
   }
+
+  // A patient manually responding to a reminder (Complete OR Missed) is
+  // genuine activity — feed the risk inactivity signal. Only patient-device
+  // occurrence chains reach here, so taskData['patientId'] is the responder.
+  // (This is a MANUAL response; auto-missed sweeps never come through here.)
+  final String patientId = (taskData['patientId'] ?? '') as String;
+  if (patientId.isNotEmpty) {
+    await firestoreService.touchLastActive(patientId);
+  }
 }
 
 /// PHASE 3 (Step 8): background isolate entry point for the Complete/

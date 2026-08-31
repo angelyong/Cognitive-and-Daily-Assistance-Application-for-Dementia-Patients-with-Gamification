@@ -95,6 +95,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
     final String? uid = _uid;
     if (uid != null) {
       NotificationService().reconcilePatientReminders(uid);
+      // Dashboard open = patient activity, for the risk inactivity signal.
+      // Throttled so repeated reopens don't hammer Firestore (see #2 in
+      // DESIGN_DECISIONS_IMPLEMENTATION_PLAN.md).
+      _firestoreService.touchLastActive(uid, minInterval: const Duration(minutes: 10));
     }
   }
 
@@ -173,6 +177,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
     if (uid == null) return;
     await _firestoreService.updateTaskStatus(taskId, 'completed');
     await _firestoreService.awardPoints(uid, _pointsPerCompletion);
+    _firestoreService.touchLastActive(uid); // patient responded to a task = active
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -200,6 +205,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
     if (uid == null) return;
     await _firestoreService.setOccurrenceStatus(taskId, occurrenceDate, 'completed');
     await _firestoreService.awardPoints(uid, _pointsPerCompletion);
+    _firestoreService.touchLastActive(uid); // patient responded to a task = active
     await NotificationService().cancelOccurrenceReminders(taskId, occurrenceDate);
 
     if (mounted) {

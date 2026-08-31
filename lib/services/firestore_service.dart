@@ -268,6 +268,35 @@ Future<String> addTask({
     });
   }
 
+  /// Records that the PATIENT was genuinely active just now — the dedicated
+  /// "last seen" signal for the risk inactivity check (see
+  /// RiskService._evaluateInactivity). Uses a server timestamp, and stores
+  /// the real activity time (unlike `lastLoginDate`, which is only the
+  /// calendar date at midnight of the first login of a day).
+  ///
+  /// MUST only be called for genuine patient activity — dashboard use, a
+  /// patient's own task response (Complete/Missed), a notification response,
+  /// or finishing a game. Never for an auto-missed task (that's the ABSENCE
+  /// of activity) or any caregiver action (a caregiver isn't the patient
+  /// being active). See DESIGN_DECISIONS_IMPLEMENTATION_PLAN.md #2.
+  ///
+  /// [minInterval] throttles high-frequency callers (e.g. a dashboard that
+  /// rebuilds/reopens often): if the stored `lastActiveAt` is already newer
+  /// than [minInterval] ago, the write is skipped. Discrete events (task
+  /// response, game finish) should pass the default (no throttle).
+  Future<void> touchLastActive(String patientId, {Duration minInterval = Duration.zero}) async {
+    if (patientId.isEmpty) return;
+    final ref = firestore.collection('users').doc(patientId);
+    if (minInterval > Duration.zero) {
+      final snap = await ref.get();
+      final ts = snap.data()?['lastActiveAt'];
+      if (ts is Timestamp && DateTime.now().difference(ts.toDate()) < minInterval) {
+        return; // recently active — don't hammer Firestore
+      }
+    }
+    await ref.set({'lastActiveAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+  }
+
   /// Live total points for a patient — the SAME `streakPoints` field
   /// [awardPoints] writes and [StreakData.totalPoints]/the streak screen
   /// read, so anything gated on points (e.g. the reward game unlock in

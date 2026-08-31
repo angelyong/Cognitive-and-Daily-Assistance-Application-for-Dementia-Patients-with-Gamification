@@ -127,6 +127,14 @@ class AdaptiveDifficultyService {
     );
     await _db.collection('gameSessions').doc(sessionId).set(session.toMap());
 
+    // Finishing a game is patient activity — feed the risk inactivity signal
+    // here (one place covers all 13 games) rather than in each game file.
+    // Fire-and-forget merge; never let it block the adaptation flow.
+    _db.collection('users').doc(patientId).set(
+      {'lastActiveAt': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
+
     final recentSnap = await _db
         .collection('gameSessions')
         .where('patientId', isEqualTo: patientId)
