@@ -138,16 +138,36 @@ class AdaptiveDifficultyService {
         recentSnap.docs.map((d) => d.data()).toList();
 
     final docRef = _stateDoc(patientId, gameId);
+    final sessionRef = _db.collection('gameSessions').doc(sessionId);
     int resultLevel = difficultyLevel;
 
     await _db.runTransaction((tx) async {
+      // ALL reads before any writes (Firestore transaction rule).
+      final sessionSnap = await tx.get(sessionRef);
       final stateSnap = await tx.get(docRef);
       final DifficultyState state = DifficultyState.fromMap(stateSnap.data());
       resultLevel = state.level;
 
-      // FROZEN: record the session (already done above) but make NO
-      // automatic change — a caregiver override is in effect.
-      if (state.frozen) return;
+      // IDEMPOTENCY (adaptationApplied on the SESSION doc — not a single
+      // lastAdaptedSessionId on the state doc, which would only block the
+      // most recent session and let an older, replayed session adapt again):
+      // never run adaptation twice for the same session, so a double-tapped
+      // "finish", a retry after the save-failed SnackBar, or a replayed
+      // offline write can't demote/promote a second time off one round.
+      if (sessionSnap.data()?['adaptationApplied'] == true) return;
+
+      // FROZEN: a caregiver override is in effect — make NO automatic change,
+      // but still mark this session applied so a later replay can't act on it
+      // after the override is lifted.
+      if (state.frozen) {
+        tx.set(sessionRef, {'adaptationApplied': true}, SetOptions(merge: true));
+        return;
+      }
+
+      // Mark applied on EVERY outcome (change or no-change), so a replay of a
+      // "no change" session can't get a second chance to change something
+      // once the level has since moved on.
+      tx.set(sessionRef, {'adaptationApplied': true}, SetOptions(merge: true));
 
       final _Decision? decision = _decide(state.level, recentDesc);
       if (decision == null) return;
@@ -199,7 +219,15 @@ class AdaptiveDifficultyService {
     int levelOf(Map<String, dynamic> s) => (s['difficultyLevel'] as num?)?.toInt() ?? -1;
 
     final double lastAccuracy = accuracyOf(recentDesc[0]);
-    if (currentLevel > 1) {
+    // LEVEL-AWARE DEMOTION: only a session actually PLAYED at the current
+    // level can trigger a demotion from it — mirroring the promote branch's
+    // own `levelOf(s) == currentLevel` check below. Without this, a single
+    // weak session played at level 3 could demote 3→2 and then, on a later
+    // evaluation, keep counting toward demoting 2→1 (it's still in the last-3
+    // list), cascading the patient down levels off sessions never actually
+    // played there. See DESIGN_DECISIONS_IMPLEMENTATION_PLAN.md ★.
+    final bool lastAtCurrentLevel = levelOf(recentDesc[0]) == currentLevel;
+    if (currentLevel > 1 && lastAtCurrentLevel) {
       if (lastAccuracy < 0.50) {
         return _Decision(
           toLevel: currentLevel - 1,
@@ -209,7 +237,8 @@ class AdaptiveDifficultyService {
       }
       if (recentDesc.length >= 2) {
         final double secondAccuracy = accuracyOf(recentDesc[1]);
-        if (lastAccuracy < 0.60 && secondAccuracy < 0.60) {
+        final bool secondAtCurrentLevel = levelOf(recentDesc[1]) == currentLevel;
+        if (secondAtCurrentLevel && lastAccuracy < 0.60 && secondAccuracy < 0.60) {
           return _Decision(
             toLevel: currentLevel - 1,
             reason: 'auto_demote',
