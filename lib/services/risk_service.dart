@@ -111,20 +111,17 @@ class RiskService {
 
   // ---- Signal 1: 3 consecutive missed task occurrences ----
 
-  /// Bounded scope decision: a recurring task's occurrences are only
-  /// expanded over the last [_occurrenceLookbackDays] days (not its full
-  /// history) — plenty to find "the last 3 occurrences" for any task due
-  /// at least every few days, and avoids an unbounded per-task
-  /// subcollection fan-out for a series that might have been running for
-  /// months. Flagged rather than silently assumed, same spirit as
-  /// sequencing_game.dart's step-count scope note from Part 1.
-  static const int _occurrenceLookbackDays = 7;
+  /// How many recent occurrences of each task to consider for the
+  /// "3 consecutive missed" signal. We only ever need the latest 3 per
+  /// series, computed directly from its recurrence rule (see
+  /// [previousOccurrences]) — this replaces the old fixed 7-day window,
+  /// which couldn't find 3 occurrences of a weekly/monthly/yearly task.
+  static const int _recentOccurrencesPerTask = 3;
 
   Future<_MissedTasksResult> _evaluateMissedTasks(String patientId) async {
     final tasksSnap =
         await _db.collection('tasks').where('patientId', isEqualTo: patientId).get();
     final DateTime now = DateTime.now();
-    final DateTime windowStart = now.subtract(const Duration(days: _occurrenceLookbackDays));
 
     final List<_Occurrence> occurrences = [];
     for (final doc in tasksSnap.docs) {
@@ -144,9 +141,11 @@ class RiskService {
           effectiveStatus(storedStatus: stored, dueDate: due, reminderIntervalMinutes: intervalMinutes),
         ));
       } else {
-        final dates = getOccurrencesForDateRange(series, windowStart, now);
+        // Frequency-independent: the last N due dates straight from the rule,
+        // so a weekly/monthly/yearly task's recent misses are found without a
+        // fixed-window scan (and a daily task reads only these N docs).
+        final dates = previousOccurrences(series, now, count: _recentOccurrencesPerTask);
         for (final date in dates) {
-          if (date.isAfter(now)) continue;
           final occDoc =
               await doc.reference.collection('occurrences').doc(occurrenceDateKey(date)).get();
           final String stored = (occDoc.data()?['status'] as String?) ?? 'pending';

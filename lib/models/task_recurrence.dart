@@ -284,6 +284,119 @@ DateTime? closestRelevantOccurrence(List<DateTime> occurrences, DateTime now) {
   return candidates.first;
 }
 
+/// The [count] most recent occurrence dates on/before [asOf] for [series],
+/// computed DIRECTLY from the recurrence rule (date-only, newest first) —
+/// works identically for daily, weekly, monthly, yearly and custom at ANY
+/// frequency, because it never scans a fixed calendar window. Returns fewer
+/// than [count] if the series hasn't occurred that many times since its
+/// startDate.
+///
+/// Why not a day-by-day backward scan with a cap: 3 YEARLY occurrences span
+/// ~730+ days, so any fixed-day cap either can't reach them or wastefully
+/// steps over years. Direct per-rule arithmetic is bounded to [count]
+/// iterations regardless of frequency. See
+/// DESIGN_DECISIONS_IMPLEMENTATION_PLAN.md #3.
+List<DateTime> previousOccurrences(TaskSeries series, DateTime asOf, {int count = 3}) {
+  final DateTime start = _dateOnly(series.startDate);
+  final DateTime end = _dateOnly(asOf);
+  if (end.isBefore(start)) return const [];
+
+  // Respect an endDate: never return an occurrence after the series ends.
+  final DateTime ceiling =
+      series.endDate != null && _dateOnly(series.endDate!).isBefore(end) ? _dateOnly(series.endDate!) : end;
+  if (ceiling.isBefore(start)) return const [];
+
+  final List<DateTime> out = [];
+
+  // Appends [d] (date-only) if it's a genuine occurrence within bounds.
+  // Returns true while more are still wanted, false once [count] is reached.
+  bool addIfValid(DateTime d) {
+    final DateTime day = _dateOnly(d);
+    if (!day.isBefore(start) && !day.isAfter(ceiling) && _isOccurrence(series, day)) {
+      out.add(day);
+    }
+    return out.length < count;
+  }
+
+  switch (series.recurrenceType) {
+    case RecurrenceType.none:
+      addIfValid(start); // a one-off's only occurrence is its start date
+      break;
+
+    case RecurrenceType.daily:
+      for (DateTime d = ceiling; !d.isBefore(start); d = d.subtract(const Duration(days: 1))) {
+        if (!addIfValid(d)) break;
+      }
+      break;
+
+    case RecurrenceType.weekly:
+      final weekdays = series.rule.weekdays.isNotEmpty ? series.rule.weekdays : [start.weekday];
+      for (DateTime d = ceiling; !d.isBefore(start); d = d.subtract(const Duration(days: 1))) {
+        if (weekdays.contains(d.weekday) && !addIfValid(d)) break;
+      }
+      break;
+
+    case RecurrenceType.custom:
+      switch (series.rule.unit) {
+        case RecurrenceUnit.days:
+          // Occurrences land on multiples of `interval` days from start.
+          final int interval = series.rule.interval < 1 ? 1 : series.rule.interval;
+          final int daysSince = ceiling.difference(start).inDays;
+          final int stepsBack = daysSince - (daysSince % interval); // most recent occurrence <= ceiling
+          for (int s = stepsBack; s >= 0; s -= interval) {
+            if (!addIfValid(start.add(Duration(days: s)))) break;
+          }
+          break;
+        case RecurrenceUnit.weeks:
+          // _isOccurrence already encodes the interval-weeks + weekday-set
+          // rule; walk back day-by-day, bounded by `count`.
+          for (DateTime d = ceiling; !d.isBefore(start); d = d.subtract(const Duration(days: 1))) {
+            if (_isOccurrence(series, d) && !addIfValid(d)) break;
+          }
+          break;
+        case RecurrenceUnit.months:
+          _addMonthlyBack(start, ceiling, series.rule.interval < 1 ? 1 : series.rule.interval, addIfValid);
+          break;
+      }
+      break;
+
+    case RecurrenceType.monthly:
+      _addMonthlyBack(start, ceiling, 1, addIfValid);
+      break;
+
+    case RecurrenceType.yearly:
+      // Subtract whole years from the anchor month/day, most recent first.
+      for (int y = ceiling.year; y >= start.year; y--) {
+        final DateTime cand = _clampedMonthDay(y, start.month, start.day);
+        if (!cand.isAfter(ceiling) && !addIfValid(cand)) break;
+      }
+      break;
+  }
+
+  return out;
+}
+
+/// Shared monthly back-walk for [RecurrenceType.monthly] and custom-months:
+/// subtract `intervalMonths` at a time from the anchor day (clamping short
+/// months, e.g. 31st → 30/28), most recent occurrence ≤ [ceiling] first.
+/// [tryAdd] returns false once enough occurrences have been collected.
+void _addMonthlyBack(
+  DateTime start,
+  DateTime ceiling,
+  int intervalMonths,
+  bool Function(DateTime) tryAdd,
+) {
+  final int monthsSince = (ceiling.year - start.year) * 12 + (ceiling.month - start.month);
+  if (monthsSince < 0) return;
+  int m = monthsSince - (monthsSince % intervalMonths); // most recent step ≤ ceiling's month
+  for (; m >= 0; m -= intervalMonths) {
+    final int monthIndex = start.year * 12 + (start.month - 1) + m;
+    final DateTime cand = _clampedMonthDay(monthIndex ~/ 12, (monthIndex % 12) + 1, start.day);
+    if (cand.isAfter(ceiling)) continue; // start-day clamp can overshoot the ceiling month
+    if (!tryAdd(cand)) break;
+  }
+}
+
 /// Tiny helper so [getOccurrencesForDateRange] doesn't need TimeOfDay.
 class TimeOfDayParts {
   final int hour;
