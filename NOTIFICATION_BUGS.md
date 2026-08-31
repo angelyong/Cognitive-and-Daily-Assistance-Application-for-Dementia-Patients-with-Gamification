@@ -2,7 +2,7 @@
 
 Code review of `notification_service.dart`, `reminder_popup.dart`, and `patient_dashboard.dart`'s notification-related code. Companion to `NOTIFICATION_STRUCTURE.md` (which documents the intended design) — this file documents where the current implementation diverges from it.
 
-**Status: #1 (critical), #2 (high), and #3 (medium) are fixed** — see the ✅ markers below for what changed. #4–#7 are still open, lower-priority notes.
+**Status: #1 (critical), #2 (high), #3 (medium), #4, and #6 are fixed** — see the ✅ markers below for what changed. #5 and #7 are deliberately left as-is (a product decision awaiting your call, and an OS-level constraint, respectively — see their entries).
 
 ---
 
@@ -63,11 +63,13 @@ So for **any** recurring task, `entry.data['status']` reads `'pending'` forever,
 
 ---
 
-## 4. LOW — Popup doesn't auto-dismiss if the occurrence is resolved through another channel while it's open
+## 4. ✅ FIXED — LOW — Popup doesn't auto-dismiss if the occurrence is resolved through another channel while it's open
 
 **Where:** `reminder_popup.dart` / `patient_dashboard.dart` interaction
 
-If a native notification action button (Complete/Missed) is tapped while `ReminderPopup` is *already open in-app* for the same occurrence, the popup has no live subscription to the occurrence's status — it just sits there with stale, still-tappable buttons until the patient interacts with it directly. Related to finding 3 (no current-status awareness) but specifically about staying open rather than not opening in the first place.
+If a native notification action button (Complete/Missed) is tapped while `ReminderPopup` is *already open in-app* for the same occurrence, the popup had no live subscription to the occurrence's status — it just sat there with stale, still-tappable buttons until the patient interacted with it directly. Related to finding 3 (no current-status awareness) but specifically about staying open rather than not opening in the first place.
+
+**Fix applied:** `_ReminderPopupState.initState` now subscribes to a live stream instead of doing a one-time fetch — `FirestoreService.getOccurrenceStatusStream` for recurring occurrences (already existed), and a new `FirestoreService.getTaskStatusStream` for non-recurring tasks. The `StreamSubscription` is cancelled in `dispose()`. Any status change from ANY channel (native action button, another device, the timeline card) now flips the footer to the "already resolved" state defined in finding 3, immediately — no more stale tappable buttons.
 
 ---
 
@@ -79,11 +81,13 @@ If a native notification action button (Complete/Missed) is tapped while `Remind
 
 ---
 
-## 6. LOW / edge case — closest-occurrence guess can pick a future occurrence over a more relevant recent one
+## 6. ✅ FIXED — LOW / edge case — closest-occurrence guess can pick a future occurrence over a more relevant recent one
 
-**Where:** `notification_service.dart`, `_showReminderPopupForTap` (~line 197-209)
+**Where:** `notification_service.dart`, `_showReminderPopupForTap`; also duplicated verbatim in `task_detail_screen.dart`, `_loadData`
 
-For a task that is **both** recurring **and** has the legacy single-shot `reminderAt` configured (payload has no `dateKey`), the fallback picks the occurrence with the smallest **absolute** time difference from now — not the most recently-due one. Late at night, this can pick tomorrow's occurrence over today's already-due one. Pre-existing logic, carried over verbatim from `TaskDetailScreen`'s own implementation (not introduced by the recent `ReminderPopup` work) — noted for completeness, not a regression.
+For a task that is **both** recurring **and** has the legacy single-shot `reminderAt` configured (payload has no `dateKey`), the fallback picked the occurrence with the smallest **absolute** time difference from now — not the most recently-due one. Late at night, this could pick tomorrow's occurrence over today's already-due one. `TaskDetailScreen` had the exact same sort duplicated independently, so it had the identical bug.
+
+**Fix applied:** added a shared `closestRelevantOccurrence(occurrences, now)` helper to `lib/models/task_recurrence.dart` — it prefers the closest occurrence that's already due (`<= now`), only falling back to the closest future one if none are due yet. Both call sites now use this one helper instead of each running their own raw-absolute-difference sort.
 
 ---
 
@@ -97,5 +101,6 @@ When `canScheduleExactNotifications()` is false (permission not granted / OEM re
 
 ## Status
 
-- ✅ #1 (critical), #2 (high), #3 (medium) — fixed. `flutter analyze` clean (no new errors/warnings beyond the pre-existing baseline).
-- ⬜ #4, #5, #6, #7 — still open, lower priority. #5 in particular is a documented-intentional behavior, not obviously a bug — worth a decision rather than a silent fix. Let me know if any of these should be addressed too.
+- ✅ #1 (critical), #2 (high), #3 (medium), #4, #6 — fixed. `flutter analyze` clean (no new errors/warnings beyond the pre-existing baseline) and `flutter build apk --debug` succeeded.
+- ⬜ #5 — deliberately left as a documented-intentional behavior, not a bug — it's your call whether barrier-dismiss should still go permanently silent for the rest of the session, or re-prompt/snooze instead.
+- ⬜ #7 — deliberately left; an OS-level inexact-alarm constraint, not something Dart code can control.

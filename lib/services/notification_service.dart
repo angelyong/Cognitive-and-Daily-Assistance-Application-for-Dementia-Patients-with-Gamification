@@ -230,12 +230,7 @@ class NotificationService {
           now.subtract(const Duration(days: 2)),
           now.add(const Duration(days: 2)),
         );
-        if (occurrences.isNotEmpty) {
-          occurrences.sort(
-            (a, b) => a.difference(now).abs().compareTo(b.difference(now).abs()),
-          );
-          occurrenceDate = occurrences.first;
-        }
+        occurrenceDate = closestRelevantOccurrence(occurrences, now);
       }
     }
 

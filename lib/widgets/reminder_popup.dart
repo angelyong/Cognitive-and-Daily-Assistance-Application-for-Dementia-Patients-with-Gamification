@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:testproject/services/firestore_service.dart';
@@ -123,22 +125,31 @@ class _ReminderPopupState extends State<ReminderPopup> {
   // the occurrence was already handled. Null = still loading.
   String? _currentStatus;
 
+  // BUGFIX (NOTIFICATION_BUGS.md #4): the original fix for #3 only fetched
+  // the status ONCE, on open — if a native notification action button (or
+  // another device) resolved this same occurrence while the popup was
+  // already open, it just sat there with stale, still-tappable buttons
+  // until the patient interacted with it directly. A live subscription
+  // instead of a one-time fetch means the footer flips to the "already
+  // resolved" state the instant that happens, from whichever channel did it.
+  StreamSubscription<String>? _statusSubscription;
+
   @override
   void initState() {
     super.initState();
-    _loadCurrentStatus();
+    final Stream<String> statusStream = widget.isRecurring
+        ? _firestoreService.getOccurrenceStatusStream(widget.taskId, widget.occurrenceDate)
+        : _firestoreService.getTaskStatusStream(widget.taskId);
+    _statusSubscription = statusStream.listen((status) {
+      if (!mounted) return;
+      setState(() => _currentStatus = status);
+    });
   }
 
-  Future<void> _loadCurrentStatus() async {
-    final String status;
-    if (widget.isRecurring) {
-      status = await _firestoreService.getOccurrenceStatus(widget.taskId, widget.occurrenceDate);
-    } else {
-      final data = await _firestoreService.getTask(widget.taskId);
-      status = (data?['status'] ?? 'pending') as String;
-    }
-    if (!mounted) return;
-    setState(() => _currentStatus = status);
+  @override
+  void dispose() {
+    _statusSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _respond(String status) async {

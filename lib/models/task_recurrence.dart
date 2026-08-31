@@ -265,6 +265,25 @@ List<DateTime> getOccurrencesForDateRange(
   return occurrences;
 }
 
+/// Picks the most relevant occurrence from a non-empty-checked [occurrences]
+/// list near [now]: prefers the closest one that's already due (<= now),
+/// only falling back to the closest future one if none are due yet.
+/// Returns null for an empty list.
+///
+/// Both TaskDetailScreen and NotificationService's notification-tap
+/// fallback need "which occurrence of this recurring task is the tap
+/// about" and used to each sort by raw absolute time difference — which
+/// could pick a future occurrence over a more relevant already-due one
+/// (e.g. late at night, tomorrow's occurrence is closer in absolute time
+/// than today's already-overdue one). See NOTIFICATION_BUGS.md finding #6.
+DateTime? closestRelevantOccurrence(List<DateTime> occurrences, DateTime now) {
+  if (occurrences.isEmpty) return null;
+  final List<DateTime> due = occurrences.where((d) => !d.isAfter(now)).toList();
+  final List<DateTime> candidates = due.isNotEmpty ? due : occurrences;
+  candidates.sort((a, b) => a.difference(now).abs().compareTo(b.difference(now).abs()));
+  return candidates.first;
+}
+
 /// Tiny helper so [getOccurrencesForDateRange] doesn't need TimeOfDay.
 class TimeOfDayParts {
   final int hour;

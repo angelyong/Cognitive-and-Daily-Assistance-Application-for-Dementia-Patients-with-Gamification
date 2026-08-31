@@ -172,6 +172,18 @@ Future<String> addTask({
     return doc.data();
   }
 
+  /// Live version of a single task's top-level `status` field — for a
+  /// non-recurring task, this IS its status (see [getOccurrenceStatusStream]
+  /// for the recurring equivalent). Emits 'pending' if the doc is missing
+  /// or has no status yet.
+  Stream<String> getTaskStatusStream(String taskId) {
+    return firestore
+        .collection('tasks')
+        .doc(taskId)
+        .snapshots()
+        .map((doc) => (doc.data()?['status'] as String?) ?? 'pending');
+  }
+
   Future<String?> getUserName(String uid) async {
     final doc = await firestore.collection('users').doc(uid).get();
     if (!doc.exists) return null;

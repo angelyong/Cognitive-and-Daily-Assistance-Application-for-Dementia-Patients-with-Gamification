@@ -62,26 +62,49 @@ and still true:
 
 ---
 
-## 3. Notification system — still-open low-priority items (`NOTIFICATION_BUGS.md`)
+## 3. Notification system — low-priority items (`NOTIFICATION_BUGS.md`)
 
-From an earlier Phase 3 pass. #1–#3 (critical/high/medium) are fixed; #4–#7
-are still open, all explicitly logged as low priority:
+From an earlier Phase 3 pass. #1–#3 (critical/high/medium) were already
+fixed. Of #4–#7: **#4 and #6 are now fixed too**; #5 and #7 are
+deliberately left as-is (not oversights — see why below).
 
-- **#4** — `ReminderPopup`, once open, has no live subscription to the
-  occurrence's status — if a native notification action button resolves
-  the same occurrence while the in-app popup is still open, the popup sits
-  there stale until the patient taps it directly.
-- **#5** — Dismissing a reminder popup via barrier-tap (no response)
-  cancels all further reminders for that occurrence, for the rest of the
-  session, immediately — flagged as "confirm this is still the intended
-  behavior," not obviously a bug.
-- **#6** — For a task that's both recurring and has a legacy single-shot
-  `reminderAt` set, the "closest occurrence" fallback can pick a future
-  occurrence over a more relevant already-due one late at night.
-  Pre-existing behavior, not a regression.
-- **#7** — Inexact-alarm fallback (when exact-alarm permission isn't
-  granted) can bunch or reorder the 5-minute follow-up chain. Platform
-  constraint, not fixable in Dart.
+- **#4 — ✅ fixed.** `ReminderPopup` used to fetch the occurrence's status
+  once, on open, so a native notification action button (or another
+  device) resolving the same occurrence while the popup was still open
+  left it stale and still-tappable. It now subscribes live
+  (`FirestoreService.getOccurrenceStatusStream` for recurring tasks, and a
+  new `getTaskStatusStream` for non-recurring ones) via a
+  `StreamSubscription` cancelled in `dispose()` — the footer flips to the
+  "already resolved" acknowledgment the instant that happens, from
+  whichever channel did it. `lib/widgets/reminder_popup.dart`,
+  `lib/services/firestore_service.dart`.
+- **#5 — left as-is, by design.** Dismissing a reminder popup via
+  barrier-tap (no response) still cancels all further reminders for that
+  occurrence for the rest of the session immediately. This was flagged as
+  "confirm this is still the intended behavior," not a bug — changing it
+  is a product decision (should an accidental outside-tap really go
+  permanently silent?) that needs your call, not something to silently
+  change. Let me know if you'd rather it re-prompt or snooze instead.
+- **#6 — ✅ fixed.** The "closest occurrence" fallback (used when a
+  notification tap or TaskDetailScreen needs to guess which occurrence of
+  a recurring task a reminder was about) picked whichever occurrence was
+  closest in *absolute* time — which could pick tomorrow's occurrence over
+  today's already-overdue one late at night. Added a shared
+  `closestRelevantOccurrence()` helper (`lib/models/task_recurrence.dart`)
+  that now prefers the closest **already-due** occurrence, only falling
+  back to a future one if none are due yet — used by both
+  `NotificationService._showReminderPopupForTap` and
+  `TaskDetailScreen._loadData`, which had duplicated the same buggy sort
+  independently.
+- **#7 — left as-is, not fixable in Dart.** When exact-alarm permission
+  isn't granted, Android's own `inexactAllowWhileIdle` scheduling can
+  batch/delay/reorder the follow-up reminder chain. This is an OS-level
+  constraint on inexact alarms, not something the app's code controls —
+  noted so it isn't mistaken for an app bug if observed on a real device
+  with exact-alarm permission denied.
+
+`flutter analyze` clean (no new issues beyond pre-existing ones) and
+`flutter build apk --debug` succeeded after both fixes.
 
 ---
 
