@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -29,9 +28,7 @@ import '../../widgets/side_drawer.dart';
 ///
 /// PART 2: also shows the selected patient's risk status (badge + tap for
 /// a signal breakdown + the riskHistory audit trail) right below the
-/// patient selector, plus a debug-only "seed demo risk data" action so the
-/// hard-to-trigger-live 3-signal rule can still be demonstrated (see
-/// RiskService.seedDemoRiskData's doc comment).
+/// patient selector.
 ///
 /// RENAMED from StatisticsScreen (see PERFORMANCE_DASHBOARD_PLAN.md): the
 /// bird's-eye, all-games-at-once view now lives in PatientPerformanceScreen
@@ -62,7 +59,9 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
 
   String get _selectedPatientName {
     final match = _patients.where((p) => p['uid'] == _selectedPatientId);
-    return match.isEmpty ? 'Patient' : (match.first['name'] ?? 'Patient') as String;
+    return match.isEmpty
+        ? 'Patient'
+        : (match.first['name'] ?? 'Patient') as String;
   }
 
   /// Which of the 4 game sets the selected patient actually plays, derived
@@ -73,8 +72,12 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
   String get _selectedPatientGameSet {
     final match = _patients.where((p) => p['uid'] == _selectedPatientId);
     final Map<String, dynamic>? patient = match.isEmpty ? null : match.first;
-    final DementiaType type = DementiaTypeX.fromFirestore(patient?['dementiaType'] as String?);
-    final DementiaStage stage = DementiaStageX.fromFirestore(patient?['dementiaStage'] as String?);
+    final DementiaType type = DementiaTypeX.fromFirestore(
+      patient?['dementiaType'] as String?,
+    );
+    final DementiaStage stage = DementiaStageX.fromFirestore(
+      patient?['dementiaStage'] as String?,
+    );
     return gameSetFor(type, stage);
   }
 
@@ -94,14 +97,17 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
   Future<void> _loadPatients() async {
     setState(() => _loadingPatients = true);
     try {
-      final patients = await _firestoreService.getPatientsForCaregiver(_caregiverId);
+      final patients = await _firestoreService.getPatientsForCaregiver(
+        _caregiverId,
+      );
       setState(() {
         _patients = patients;
         _loadingPatients = false;
         // Fall back to the first patient only if no initialPatientId was
         // requested, or that patient is no longer in this caregiver's list.
         final bool selectedStillValid =
-            _selectedPatientId != null && patients.any((p) => p['uid'] == _selectedPatientId);
+            _selectedPatientId != null &&
+            patients.any((p) => p['uid'] == _selectedPatientId);
         if (!selectedStillValid && patients.isNotEmpty) {
           _selectedPatientId = patients.first['uid'];
         }
@@ -109,9 +115,9 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loadingPatients = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load patients: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load patients: $e')));
     }
   }
 
@@ -147,29 +153,31 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
             const SizedBox(height: 14),
             _loadingPatients
                 ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.orangeStart),
+                    child: CircularProgressIndicator(
+                      color: AppColors.orangeStart,
+                    ),
                   )
                 : _patients.isEmpty
-                    ? const Text(
-                        'No patients yet — add one from Manage Patient.',
-                        style: AppTextStyles.muted,
-                      )
-                    : DropdownButtonFormField<String>(
-                        value: _selectedPatientId,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
-                        dropdownColor: AppColors.cardPurpleLight,
-                        decoration: AppDecorations.darkInput('Patient'),
-                        items: _patients.map<DropdownMenuItem<String>>((patient) {
-                          return DropdownMenuItem<String>(
-                            value: patient['uid'],
-                            child: Text(patient['name']),
-                          );
-                        }).toList(),
-                        onChanged: (value) => setState(() {
-                          _selectedPatientId = value;
-                          _expandedGameId = null;
-                        }),
-                      ),
+                ? const Text(
+                    'No patients yet — add one from Manage Patient.',
+                    style: AppTextStyles.muted,
+                  )
+                : DropdownButtonFormField<String>(
+                    value: _selectedPatientId,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    dropdownColor: AppColors.cardPurpleLight,
+                    decoration: AppDecorations.darkInput('Patient'),
+                    items: _patients.map<DropdownMenuItem<String>>((patient) {
+                      return DropdownMenuItem<String>(
+                        value: patient['uid'],
+                        child: Text(patient['name']),
+                      );
+                    }).toList(),
+                    onChanged: (value) => setState(() {
+                      _selectedPatientId = value;
+                      _expandedGameId = null;
+                    }),
+                  ),
             const SizedBox(height: 18),
             if (_selectedPatientId == null)
               const Text(
@@ -184,7 +192,10 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
                 patientName: _selectedPatientName,
               ),
               const SizedBox(height: 8),
-              const Text('Risk Change History', style: AppTextStyles.sectionTitle),
+              const Text(
+                'Risk Change History',
+                style: AppTextStyles.sectionTitle,
+              ),
               const SizedBox(height: 10),
               _RiskHistoryList(patientId: _selectedPatientId!),
               const SizedBox(height: 18),
@@ -202,13 +213,18 @@ class _GameStatisticScreenState extends State<GameStatisticScreen> {
                   game: game,
                   expanded: _expandedGameId == game.id,
                   onToggleExpanded: () => setState(() {
-                    _expandedGameId = _expandedGameId == game.id ? null : game.id;
+                    _expandedGameId = _expandedGameId == game.id
+                        ? null
+                        : game.id;
                   }),
                 ),
                 const SizedBox(height: 10),
               ],
               const SizedBox(height: 8),
-              const Text('Difficulty Change History', style: AppTextStyles.sectionTitle),
+              const Text(
+                'Difficulty Change History',
+                style: AppTextStyles.sectionTitle,
+              ),
               const SizedBox(height: 10),
               _HistoryList(patientId: _selectedPatientId!),
               const SizedBox(height: 20),
@@ -272,7 +288,8 @@ class _GameDifficultyCard extends StatelessWidget {
       child: StreamBuilder<DifficultyState>(
         stream: AdaptiveDifficultyService().watchState(patientId, game.id),
         builder: (context, snapshot) {
-          final DifficultyState state = snapshot.data ?? DifficultyState.initial;
+          final DifficultyState state =
+              snapshot.data ?? DifficultyState.initial;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -301,17 +318,30 @@ class _GameDifficultyCard extends StatelessWidget {
                               _LevelDots(level: state.level),
                               Text(
                                 'Level ${state.level}',
-                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
                               ),
                               Text(
-                                state.source == 'caregiver' ? 'Set by caregiver' : 'Auto',
-                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                state.source == 'caregiver'
+                                    ? 'Set by caregiver'
+                                    : 'Auto',
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
                               ),
                               if (state.frozen)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.orangeEnd.withOpacity(0.18),
+                                    color: AppColors.orangeEnd.withOpacity(
+                                      0.18,
+                                    ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: const Text(
@@ -345,7 +375,9 @@ class _GameDifficultyCard extends StatelessWidget {
                         foregroundColor: AppColors.orangeStart,
                         side: const BorderSide(color: AppColors.orangeStart),
                         padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       child: const Text('Override'),
                     ),
@@ -363,7 +395,9 @@ class _GameDifficultyCard extends StatelessWidget {
                           foregroundColor: AppColors.greenCheck,
                           side: const BorderSide(color: AppColors.greenCheck),
                           padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         child: const Text('Resume Auto'),
                       ),
@@ -382,7 +416,10 @@ class _GameDifficultyCard extends StatelessWidget {
     );
   }
 
-  Future<void> _showOverrideDialog(BuildContext context, DifficultyState currentState) async {
+  Future<void> _showOverrideDialog(
+    BuildContext context,
+    DifficultyState currentState,
+  ) async {
     int selectedLevel = currentState.level;
     final TextEditingController reasonController = TextEditingController();
 
@@ -392,13 +429,23 @@ class _GameDifficultyCard extends StatelessWidget {
         builder: (dialogContext, setDialogState) {
           final bool canSave = reasonController.text.trim().isNotEmpty;
           return AlertDialog(
+            // The keyboard substantially reduces the available height on
+            // smaller devices. Let Flutter place the title and form in a
+            // flexible scroll view instead of overflowing the dialog.
+            scrollable: true,
             backgroundColor: AppColors.cardPurple,
-            title: Text('Override — ${game.label}', style: const TextStyle(color: Colors.white)),
+            title: Text(
+              'Override — ${game.label}',
+              style: const TextStyle(color: Colors.white),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Level', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                const Text(
+                  'Level',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [1, 2, 3].map((level) {
@@ -407,12 +454,19 @@ class _GameDifficultyCard extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: OutlinedButton(
-                          onPressed: () => setDialogState(() => selectedLevel = level),
+                          onPressed: () =>
+                              setDialogState(() => selectedLevel = level),
                           style: OutlinedButton.styleFrom(
-                            backgroundColor: selected ? AppColors.orangeStart : Colors.transparent,
-                            foregroundColor: selected ? Colors.white : AppColors.textMuted,
+                            backgroundColor: selected
+                                ? AppColors.orangeStart
+                                : Colors.transparent,
+                            foregroundColor: selected
+                                ? Colors.white
+                                : AppColors.textMuted,
                             side: BorderSide(
-                              color: selected ? AppColors.orangeStart : AppColors.cardPurpleLight,
+                              color: selected
+                                  ? AppColors.orangeStart
+                                  : AppColors.cardPurpleLight,
                             ),
                           ),
                           child: Text('$level'),
@@ -437,7 +491,9 @@ class _GameDifficultyCard extends StatelessWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                style: TextButton.styleFrom(foregroundColor: AppColors.textMuted),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textMuted,
+                ),
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
@@ -445,7 +501,9 @@ class _GameDifficultyCard extends StatelessWidget {
                   backgroundColor: AppColors.orangeStart,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: canSave ? () => Navigator.pop(dialogContext, true) : null,
+                onPressed: canSave
+                    ? () => Navigator.pop(dialogContext, true)
+                    : null,
                 child: const Text('Save'),
               ),
             ],
@@ -465,9 +523,9 @@ class _GameDifficultyCard extends StatelessWidget {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save override: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save override: $e')));
       }
     }
   }
@@ -481,7 +539,11 @@ class _AccuracyTrend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<GameSession>>(
-      stream: AdaptiveDifficultyService().watchRecentSessions(patientId, gameId, limit: 10),
+      stream: AdaptiveDifficultyService().watchRecentSessions(
+        patientId,
+        gameId,
+        limit: 10,
+      ),
       builder: (context, snapshot) {
         final List<GameSession> sessions = snapshot.data ?? const [];
         if (sessions.isEmpty) {
@@ -520,9 +582,15 @@ class _AccuracyTrend extends StatelessWidget {
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     show: true,
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
@@ -530,7 +598,10 @@ class _AccuracyTrend extends StatelessWidget {
                         interval: 50,
                         getTitlesWidget: (value, meta) => Text(
                           '${value.round()}%',
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
                     ),
@@ -571,8 +642,10 @@ class _HistoryList extends StatelessWidget {
       case 'auto_demote':
         final stats = data['triggeringStats'] as Map<String, dynamic>?;
         final String rule = (stats?['rule'] as String?) ?? '';
-        if (rule == 'most_recent_below_50') return 'auto — most recent session <50% accuracy';
-        if (rule == 'last_2_below_60') return 'auto — last 2 sessions both <60% accuracy';
+        if (rule == 'most_recent_below_50')
+          return 'auto — most recent session <50% accuracy';
+        if (rule == 'last_2_below_60')
+          return 'auto — last 2 sessions both <60% accuracy';
         return 'auto';
       case 'caregiver_override':
         final String overrideReason = (data['overrideReason'] as String?) ?? '';
@@ -633,7 +706,10 @@ class _HistoryList extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${_reasonText(data)} · $when',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -661,8 +737,6 @@ class _RiskStatusCard extends StatefulWidget {
 }
 
 class _RiskStatusCardState extends State<_RiskStatusCard> {
-  bool _seeding = false;
-
   @override
   void initState() {
     super.initState();
@@ -677,52 +751,31 @@ class _RiskStatusCardState extends State<_RiskStatusCard> {
     }
   }
 
-  Future<void> _seedDemoData() async {
-    setState(() => _seeding = true);
-    try {
-      await RiskService().seedDemoRiskData(widget.patientId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Demo risk data seeded — all 3 signals should now be active.'),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to seed demo data: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _seeding = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<RiskAssessment>(
       stream: RiskService().watchAssessment(widget.patientId),
       builder: (context, snapshot) {
-        final RiskAssessment assessment = snapshot.data ?? RiskAssessment.initial;
+        final RiskAssessment assessment =
+            snapshot.data ?? RiskAssessment.initial;
         final RiskLevel level = assessment.level;
         final bool atRisk = level == RiskLevel.atRisk;
         final bool monitor = level == RiskLevel.monitor;
         final Color statusColor = atRisk
             ? AppColors.riskRed
             : monitor
-                ? AppColors.riskAmber
-                : AppColors.greenCheck;
+            ? AppColors.riskAmber
+            : AppColors.greenCheck;
         final String statusLabel = atRisk
             ? 'At Risk'
             : monitor
-                ? 'Needs Attention'
-                : 'No Risk Detected';
+            ? 'Needs Attention'
+            : 'No Risk Detected';
         final IconData statusIcon = atRisk
             ? Icons.warning_rounded
             : monitor
-                ? Icons.error_outline
-                : Icons.shield_outlined;
+            ? Icons.error_outline
+            : Icons.shield_outlined;
 
         return Container(
           width: double.infinity,
@@ -730,19 +783,22 @@ class _RiskStatusCardState extends State<_RiskStatusCard> {
           decoration: BoxDecoration(
             color: AppColors.cardPurple,
             borderRadius: BorderRadius.circular(16),
-            border: (atRisk || monitor) ? Border.all(color: statusColor, width: 1.5) : null,
+            border: (atRisk || monitor)
+                ? Border.all(color: statusColor, width: 1.5)
+                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InkWell(
-                onTap: () => showRiskBreakdownDialog(context, widget.patientName, assessment),
+                onTap: () => showRiskBreakdownDialog(
+                  context,
+                  widget.patientName,
+                  assessment,
+                ),
                 child: Row(
                   children: [
-                    Icon(
-                      statusIcon,
-                      color: statusColor,
-                    ),
+                    Icon(statusIcon, color: statusColor),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -758,7 +814,10 @@ class _RiskStatusCardState extends State<_RiskStatusCard> {
                           ),
                           const Text(
                             'Tap for the signal breakdown',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -767,43 +826,6 @@ class _RiskStatusCardState extends State<_RiskStatusCard> {
                   ],
                 ),
               ),
-              if (kDebugMode) ...[
-                const SizedBox(height: 12),
-                const Divider(color: AppColors.cardPurpleLight, height: 1),
-                const SizedBox(height: 12),
-                const Row(
-                  children: [
-                    Icon(Icons.science_outlined, size: 14, color: AppColors.textMuted),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Debug tool: fabricates data to trigger all 3 signals for a live demo.',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: _seeding ? null : _seedDemoData,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.riskRed,
-                      side: const BorderSide(color: AppColors.riskRed),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: _seeding
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.riskRed),
-                          )
-                        : const Text('Seed Demo Risk Data (Debug)'),
-                  ),
-                ),
-              ],
             ],
           ),
         );
@@ -849,9 +871,13 @@ class _RiskHistoryList extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    becameAtRisk ? Icons.warning_rounded : Icons.check_circle_outline,
+                    becameAtRisk
+                        ? Icons.warning_rounded
+                        : Icons.check_circle_outline,
                     size: 16,
-                    color: becameAtRisk ? AppColors.riskRed : AppColors.greenCheck,
+                    color: becameAtRisk
+                        ? AppColors.riskRed
+                        : AppColors.greenCheck,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -866,7 +892,13 @@ class _RiskHistoryList extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(when, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                        Text(
+                          when,
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),

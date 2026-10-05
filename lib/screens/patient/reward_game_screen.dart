@@ -118,17 +118,6 @@ class _RewardGameScreenState extends State<RewardGameScreen> {
                   const Center(
                     child: CircularProgressIndicator(color: AppColors.orangeStart),
                   ),
-                // A patient absorbed in an actively-engaging game (unlike the
-                // old, more passive reward sites) may never look up at the
-                // small AppBar arrow — this stays on top of the WebView
-                // content at all times (later Stack children paint over
-                // earlier ones) so there's always an unmissable way out,
-                // per this screen's own "must never get stuck" rule.
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: _BackToGamesButton(onTap: () => Navigator.pop(context)),
-                ),
               ],
             ),
     );
@@ -160,48 +149,6 @@ class _RewardGameScreenState extends State<RewardGameScreen> {
               child: const Text('Back'),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Large, high-contrast, always-on-top escape hatch for the WebView games —
-/// deliberately more prominent than a typical back button (bigger touch
-/// target, filled background, an explicit label rather than a bare icon)
-/// since it has to compete for attention with an actively engaging game,
-/// not just sit in an unused corner. "Back to Games" matches the phrase
-/// every cognitive game's own completion dialog already uses, so the
-/// wording is familiar rather than introducing a new term for the same action.
-class _BackToGamesButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _BackToGamesButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withOpacity(0.55),
-      borderRadius: BorderRadius.circular(28),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: onTap,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.arrow_back, color: Colors.white, size: 22),
-              SizedBox(width: 8),
-              Text(
-                'Back to Games',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

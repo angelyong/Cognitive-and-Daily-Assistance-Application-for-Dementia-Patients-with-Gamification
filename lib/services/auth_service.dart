@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:testproject/services/streak_service.dart';
+import 'package:testproject/services/session_prefs.dart';
 import 'package:testproject/models/streak_data.dart';
 
 /// Unified success/failure contract for every [AuthService] method
@@ -112,9 +113,27 @@ class AuthService {
     }
   }
 
+  /// Sends a Firebase password-reset email. Firebase itself hosts the reset
+  /// page and mails the link, so no backend of ours is involved.
+  Future<AuthResult<void>> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return const AuthResult.success();
+    } on FirebaseAuthException catch (e) {
+      if (kDebugMode) print("Password reset failed: ${e.code}");
+      return AuthResult.failure(e.message ?? e.code);
+    } catch (e) {
+      if (kDebugMode) print(e.toString());
+      return AuthResult.failure(e.toString());
+    }
+  }
+
   Future<AuthResult<void>> logout() async {
     try {
       await _auth.signOut();
+      // Drop the "Remember me" flag so the next cold start returns to /login
+      // instead of auto-resuming the session we just ended.
+      await SessionPrefs.clear();
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
       if (kDebugMode) print(e.message);

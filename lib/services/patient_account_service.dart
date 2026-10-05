@@ -71,6 +71,7 @@ class PatientAccountService {
       'email': email.trim(),
       'role': 'patient',
       'caregiverId': caregiverId,
+      'linkStatus': 'linked',
       'dementiaStage': dementiaStage.firestoreValue,
       'dementiaType': dementiaType.firestoreValue,
       'createdAt': FieldValue.serverTimestamp(),

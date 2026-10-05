@@ -23,7 +23,10 @@ import 'package:testproject/screens/caregiver/patient_performance_screen.dart';
 import 'package:testproject/screens/patient/task_history_screen.dart';
 import 'package:testproject/screens/task_detail_screen.dart';
 import 'package:testproject/services/navigator_key.dart';
+import 'package:testproject/services/session_prefs.dart';
+import 'package:testproject/services/streak_service.dart';
 import 'package:testproject/screens/settings_screen.dart';
+import 'package:testproject/theme/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -137,7 +140,98 @@ class MyApp extends StatelessWidget {
           return TaskDetailScreen(taskId: taskId);
         },
       },
-      initialRoute: '/login',
+      // AuthGate decides between auto-login and the login screen based on the
+      // "Remember me" flag; it replaces the old fixed initialRoute: '/login'.
+      home: const AuthGate(),
+    );
+  }
+}
+
+/// First screen at launch. Resolves where to go:
+///  - no signed-in session, or "Remember me" was off  -> LoginScreen
+///  - session present and "Remember me" on            -> role's dashboard
+///
+/// Firebase keeps the session on disk across launches, so a returning user is
+/// still signed in here; the [SessionPrefs] flag is what decides whether we
+/// honour that or sign them out and require a fresh login.
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  late final Future<String?> _routeFuture = _resolveRoute();
+
+  /// Returns the named route to auto-navigate to, or null to show login.
+  Future<String?> _resolveRoute() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+
+    final bool remember = await SessionPrefs.isRemembered();
+    if (!remember) {
+      // A session exists on disk but the user didn't opt to stay logged in.
+      await FirebaseAuth.instance.signOut();
+      return null;
+    }
+
+    final DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    String? role;
+    if (doc.exists) {
+      final data = doc.data() as Map<String, dynamic>?;
+      role = data?['role'] as String?;
+    }
+
+    if (role == 'patient') {
+      // Keep the daily streak correct on auto-login too. It's a no-op after
+      // the first login of the day, so it's safe to await here silently
+      // (no celebratory dialog — that only shows on an explicit login).
+      await StreakService().checkAndUpdateStreak(user.uid);
+      return '/patientdashboard';
+    }
+    if (role == 'caregiver') {
+      return '/homescreen';
+    }
+
+    // Unknown / missing role: fall back to login rather than guessing.
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _routeFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            backgroundColor: AppColors.bgDark,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.orangeStart),
+            ),
+          );
+        }
+
+        final String? route = snapshot.data;
+        if (route == null) {
+          return const LoginScreen();
+        }
+
+        // Defer navigation until after this frame — we can't push a route
+        // while the widget tree for AuthGate is still being built.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          navigatorKey.currentState?.pushReplacementNamed(route);
+        });
+        return const Scaffold(
+          backgroundColor: AppColors.bgDark,
+          body: Center(
+            child: CircularProgressIndicator(color: AppColors.orangeStart),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -32,7 +31,8 @@ class PatientPerformanceScreen extends StatefulWidget {
   const PatientPerformanceScreen({super.key, this.initialPatientId});
 
   @override
-  State<PatientPerformanceScreen> createState() => _PatientPerformanceScreenState();
+  State<PatientPerformanceScreen> createState() =>
+      _PatientPerformanceScreenState();
 }
 
 class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
@@ -46,12 +46,12 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
   PerformancePeriod _period = PerformancePeriod.last30Days;
   _TrendTab _trendTab = _TrendTab.accuracy;
   Future<PerformanceSnapshot>? _snapshotFuture;
-  bool _seeding = false;
-  bool _clearing = false;
 
   String get _selectedPatientName {
     final match = _patients.where((p) => p['uid'] == _selectedPatientId);
-    return match.isEmpty ? 'Patient' : (match.first['name'] ?? 'Patient') as String;
+    return match.isEmpty
+        ? 'Patient'
+        : (match.first['name'] ?? 'Patient') as String;
   }
 
   @override
@@ -70,12 +70,15 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
   Future<void> _loadPatients() async {
     setState(() => _loadingPatients = true);
     try {
-      final patients = await _firestoreService.getPatientsForCaregiver(_caregiverId);
+      final patients = await _firestoreService.getPatientsForCaregiver(
+        _caregiverId,
+      );
       setState(() {
         _patients = patients;
         _loadingPatients = false;
         final bool selectedStillValid =
-            _selectedPatientId != null && patients.any((p) => p['uid'] == _selectedPatientId);
+            _selectedPatientId != null &&
+            patients.any((p) => p['uid'] == _selectedPatientId);
         if (!selectedStillValid && patients.isNotEmpty) {
           _selectedPatientId = patients.first['uid'];
         }
@@ -84,64 +87,19 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loadingPatients = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load patients: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load patients: $e')));
     }
   }
 
   void _reload() {
     final String? patientId = _selectedPatientId;
     setState(() {
-      _snapshotFuture =
-          patientId == null ? null : PerformanceAnalyticsService().loadSnapshot(patientId, _period);
+      _snapshotFuture = patientId == null
+          ? null
+          : PerformanceAnalyticsService().loadSnapshot(patientId, _period);
     });
-  }
-
-  Future<void> _seedDemoData() async {
-    final String? patientId = _selectedPatientId;
-    if (patientId == null) return;
-    setState(() => _seeding = true);
-    try {
-      await PerformanceAnalyticsService().seedDemoPerformanceData(patientId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Demo performance data seeded.')),
-        );
-        _reload();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to seed demo data: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _seeding = false);
-    }
-  }
-
-  Future<void> _clearDemoData() async {
-    final String? patientId = _selectedPatientId;
-    if (patientId == null) return;
-    setState(() => _clearing = true);
-    try {
-      await PerformanceAnalyticsService().clearDemoPerformanceData(patientId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Demo performance data cleared.')),
-        );
-        _reload();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to clear demo data: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _clearing = false);
-    }
   }
 
   @override
@@ -176,29 +134,31 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
             const SizedBox(height: 14),
             _loadingPatients
                 ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.orangeStart),
+                    child: CircularProgressIndicator(
+                      color: AppColors.orangeStart,
+                    ),
                   )
                 : _patients.isEmpty
-                    ? const Text(
-                        'No patients yet — add one from Manage Patient.',
-                        style: AppTextStyles.muted,
-                      )
-                    : DropdownButtonFormField<String>(
-                        value: _selectedPatientId,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
-                        dropdownColor: AppColors.cardPurpleLight,
-                        decoration: AppDecorations.darkInput('Patient'),
-                        items: _patients.map<DropdownMenuItem<String>>((patient) {
-                          return DropdownMenuItem<String>(
-                            value: patient['uid'],
-                            child: Text(patient['name']),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() => _selectedPatientId = value);
-                          _reload();
-                        },
-                      ),
+                ? const Text(
+                    'No patients yet — add one from Manage Patient.',
+                    style: AppTextStyles.muted,
+                  )
+                : DropdownButtonFormField<String>(
+                    value: _selectedPatientId,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    dropdownColor: AppColors.cardPurpleLight,
+                    decoration: AppDecorations.darkInput('Patient'),
+                    items: _patients.map<DropdownMenuItem<String>>((patient) {
+                      return DropdownMenuItem<String>(
+                        value: patient['uid'],
+                        child: Text(patient['name']),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() => _selectedPatientId = value);
+                      _reload();
+                    },
+                  ),
             const SizedBox(height: 16),
             if (_selectedPatientId == null)
               const Text(
@@ -221,7 +181,9 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 40),
                       child: Center(
-                        child: CircularProgressIndicator(color: AppColors.orangeStart),
+                        child: CircularProgressIndicator(
+                          color: AppColors.orangeStart,
+                        ),
                       ),
                     );
                   }
@@ -231,7 +193,8 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
                       style: const TextStyle(color: Colors.white),
                     );
                   }
-                  final PerformanceSnapshot data = snapshot.data ?? PerformanceSnapshot.empty;
+                  final PerformanceSnapshot data =
+                      snapshot.data ?? PerformanceSnapshot.empty;
                   return _DashboardBody(
                     data: data,
                     trendTab: _trendTab,
@@ -239,13 +202,11 @@ class _PatientPerformanceScreenState extends State<PatientPerformanceScreen> {
                     onOpenGameStatistic: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => GameStatisticScreen(initialPatientId: _selectedPatientId),
+                        builder: (_) => GameStatisticScreen(
+                          initialPatientId: _selectedPatientId,
+                        ),
                       ),
                     ),
-                    seeding: _seeding,
-                    clearing: _clearing,
-                    onSeedDemoData: _seedDemoData,
-                    onClearDemoData: _clearDemoData,
                     patientName: _selectedPatientName,
                   );
                 },
@@ -272,13 +233,21 @@ class _PeriodSelector extends StatelessWidget {
             child: OutlinedButton(
               onPressed: () => onChanged(period),
               style: OutlinedButton.styleFrom(
-                backgroundColor: selected == period ? AppColors.orangeStart : AppColors.cardPurple,
-                foregroundColor: selected == period ? Colors.white : AppColors.textMuted,
+                backgroundColor: selected == period
+                    ? AppColors.orangeStart
+                    : AppColors.cardPurple,
+                foregroundColor: selected == period
+                    ? Colors.white
+                    : AppColors.textMuted,
                 side: BorderSide(
-                  color: selected == period ? AppColors.orangeStart : AppColors.cardPurpleLight,
+                  color: selected == period
+                      ? AppColors.orangeStart
+                      : AppColors.cardPurpleLight,
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: Text(period.label, style: const TextStyle(fontSize: 12)),
             ),
@@ -295,10 +264,6 @@ class _DashboardBody extends StatelessWidget {
   final _TrendTab trendTab;
   final ValueChanged<_TrendTab> onTrendTabChanged;
   final VoidCallback onOpenGameStatistic;
-  final bool seeding;
-  final bool clearing;
-  final VoidCallback onSeedDemoData;
-  final VoidCallback onClearDemoData;
   final String patientName;
 
   const _DashboardBody({
@@ -306,10 +271,6 @@ class _DashboardBody extends StatelessWidget {
     required this.trendTab,
     required this.onTrendTabChanged,
     required this.onOpenGameStatistic,
-    required this.seeding,
-    required this.clearing,
-    required this.onSeedDemoData,
-    required this.onClearDemoData,
     required this.patientName,
   });
 
@@ -371,16 +332,27 @@ class _DashboardBody extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.local_fire_department, color: AppColors.orangeStart, size: 20),
+              const Icon(
+                Icons.local_fire_department,
+                color: AppColors.orangeStart,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Text(
                 'Day ${data.currentStreak} streak',
-                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const Spacer(),
               Text(
                 '${data.streakPoints} points',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -417,73 +389,15 @@ class _DashboardBody extends StatelessWidget {
               foregroundColor: AppColors.orangeStart,
               side: const BorderSide(color: AppColors.orangeStart),
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: const Icon(Icons.tune),
             label: const Text('View / Adjust Game Difficulty'),
           ),
         ),
 
-        if (kDebugMode) ...[
-          const SizedBox(height: 20),
-          const Divider(color: AppColors.cardPurpleLight),
-          const SizedBox(height: 12),
-          const Row(
-            children: [
-              Icon(Icons.science_outlined, size: 14, color: AppColors.textMuted),
-              SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Debug tools: fabricate ~30 days of spread-out activity so every '
-                  'chart above has real data to render.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: seeding ? null : onSeedDemoData,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.orangeStart,
-                    side: const BorderSide(color: AppColors.orangeStart),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: seeding
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.orangeStart),
-                        )
-                      : const Text('Seed Demo Data (Debug)'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: clearing ? null : onClearDemoData,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textMuted,
-                    side: const BorderSide(color: AppColors.cardPurpleLight),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: clearing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textMuted),
-                        )
-                      : const Text('Clear Demo Data'),
-                ),
-              ),
-            ],
-          ),
-        ],
         const SizedBox(height: 20),
       ],
     );
@@ -533,14 +447,21 @@ class _KpiTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
           const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 value,
-                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               if (d != null) ...[
                 const SizedBox(width: 6),
@@ -555,7 +476,11 @@ class _KpiTile extends StatelessWidget {
                       ),
                       Text(
                         '${d.abs().round()}%',
-                        style: TextStyle(color: trendColor, fontSize: 11, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: trendColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -629,15 +554,22 @@ class _TrendChart extends StatelessWidget {
     final bool isPercent = tab == _TrendTab.accuracy;
     final List<FlSpot> spots = [
       for (int i = 0; i < points.length; i++)
-        FlSpot(i.toDouble(), isPercent ? points[i].value * 100 : points[i].value),
+        FlSpot(
+          i.toDouble(),
+          isPercent ? points[i].value * 100 : points[i].value,
+        ),
     ];
     final double maxY = isPercent
         ? 100
-        : (spots.map((s) => s.y).fold<double>(0, (a, b) => a > b ? a : b) * 1.3).clamp(1, double.infinity);
+        : (spots.map((s) => s.y).fold<double>(0, (a, b) => a > b ? a : b) * 1.3)
+              .clamp(1, double.infinity);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-      decoration: BoxDecoration(color: AppColors.cardPurple, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: AppColors.cardPurple,
+        borderRadius: BorderRadius.circular(16),
+      ),
       height: 180,
       child: LineChart(
         LineChartData(
@@ -647,21 +579,31 @@ class _TrendChart extends StatelessWidget {
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
             show: true,
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 24,
-                interval: (points.length / 4).clamp(1, double.infinity).roundToDouble(),
+                interval: (points.length / 4)
+                    .clamp(1, double.infinity)
+                    .roundToDouble(),
                 getTitlesWidget: (value, meta) {
                   final int i = value.round();
-                  if (i < 0 || i >= points.length) return const SizedBox.shrink();
+                  if (i < 0 || i >= points.length)
+                    return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       DateFormat('d/M').format(points[i].day),
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 9),
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 9,
+                      ),
                     ),
                   );
                 },
@@ -673,7 +615,10 @@ class _TrendChart extends StatelessWidget {
                 reservedSize: 32,
                 getTitlesWidget: (value, meta) => Text(
                   isPercent ? '${value.round()}%' : value.round().toString(),
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 10,
+                  ),
                 ),
               ),
             ),
@@ -686,7 +631,10 @@ class _TrendChart extends StatelessWidget {
               color: AppColors.orangeStart,
               barWidth: 2.5,
               dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(show: true, color: AppColors.orangeStart.withOpacity(0.12)),
+              belowBarData: BarAreaData(
+                show: true,
+                color: AppColors.orangeStart.withOpacity(0.12),
+              ),
             ),
           ],
         ),
@@ -710,7 +658,8 @@ class _AccuracyByGameList extends StatelessWidget {
         style: TextStyle(color: AppColors.textMuted, fontSize: 12),
       );
     }
-    final sorted = [...bars]..sort((a, b) => b.averageAccuracy.compareTo(a.averageAccuracy));
+    final sorted = [...bars]
+      ..sort((a, b) => b.averageAccuracy.compareTo(a.averageAccuracy));
     return Column(
       children: [
         for (final bar in sorted)
@@ -735,7 +684,9 @@ class _AccuracyByGameList extends StatelessWidget {
                       value: bar.averageAccuracy.clamp(0, 1),
                       minHeight: 10,
                       backgroundColor: AppColors.cardPurpleLight,
-                      valueColor: const AlwaysStoppedAnimation(AppColors.orangeStart),
+                      valueColor: const AlwaysStoppedAnimation(
+                        AppColors.orangeStart,
+                      ),
                     ),
                   ),
                 ),
@@ -744,7 +695,10 @@ class _AccuracyByGameList extends StatelessWidget {
                   width: 38,
                   child: Text(
                     '${(bar.averageAccuracy * 100).round()}%',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11,
+                    ),
                     textAlign: TextAlign.right,
                   ),
                 ),
@@ -771,12 +725,17 @@ class _TasksByCategoryChart extends StatelessWidget {
         ),
       );
     }
-    final double maxCount =
-        bars.map((b) => b.completedCount).fold<int>(0, (a, b) => a > b ? a : b).toDouble();
+    final double maxCount = bars
+        .map((b) => b.completedCount)
+        .fold<int>(0, (a, b) => a > b ? a : b)
+        .toDouble();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-      decoration: BoxDecoration(color: AppColors.cardPurple, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: AppColors.cardPurple,
+        borderRadius: BorderRadius.circular(16),
+      ),
       height: 200,
       child: BarChart(
         BarChartData(
@@ -787,15 +746,22 @@ class _TasksByCategoryChart extends StatelessWidget {
           barTouchData: BarTouchData(enabled: false),
           titlesData: FlTitlesData(
             show: true,
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 26,
                 getTitlesWidget: (value, meta) => Text(
                   value.round().toString(),
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 10,
+                  ),
                 ),
               ),
             ),
@@ -810,7 +776,10 @@ class _TasksByCategoryChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       bars[i].category,
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 9),
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 9,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   );

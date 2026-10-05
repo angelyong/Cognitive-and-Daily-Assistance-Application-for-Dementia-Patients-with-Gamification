@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:testproject/services/auth_service.dart';
+import 'package:testproject/services/session_prefs.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:testproject/models/streak_data.dart';
 import 'package:testproject/widgets/login_success_effect.dart';
@@ -20,6 +21,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool rememberMe = false;
   bool obscurePassword = true; // for show/hide toggle
+
+  @override
+  void initState() {
+    super.initState();
+    // If the user previously ticked "Remember me", pre-fill their email and
+    // re-tick the box so the choice carries over between sessions.
+    SessionPrefs.rememberedEmail().then((email) {
+      if (!mounted || email == null || email.isEmpty) return;
+      setState(() {
+        emailController.text = email;
+        rememberMe = true;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,14 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {
-                      // TODO: Implement forgot password
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Forgot Password tapped'),
-                        ),
-                      );
-                    },
+                    onPressed: _showForgotPasswordDialog,
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.orangeStart,
                     ),
@@ -259,6 +274,17 @@ Future<void> _signIn() async {
       return;
     }
 
+    // Persist the "Remember me" choice now that login has succeeded. When
+    // ticked, the next cold start auto-resumes this session (see AuthGate in
+    // main.dart) and pre-fills this email; when unticked, the session is
+    // signed out on next launch so login is required again.
+    await SessionPrefs.setRemembered(
+      rememberMe,
+      email: emailController.text.trim(),
+    );
+
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Login Successful')),
     );
@@ -337,4 +363,125 @@ Future<void> _signIn() async {
     );
   }
 }
+
+  /// Prompts for an email (pre-filled from the login field) and sends a
+  /// Firebase password-reset link to it.
+  Future<void> _showForgotPasswordDialog() async {
+    // The dialog owns its own TextEditingController (see _ForgotPasswordDialog)
+    // so Flutter disposes it only after the dialog route is fully gone. Doing
+    // the dispose here, right after the dialog closed, tore the controller out
+    // from under the still-animating TextField and tripped a framework
+    // assertion (_dependents.isEmpty).
+    final String? email = await showDialog<String>(
+      context: context,
+      builder: (_) => _ForgotPasswordDialog(
+        initialEmail: emailController.text.trim(),
+      ),
+    );
+
+    // Null means the dialog was cancelled/dismissed.
+    if (email == null) return;
+
+    if (email.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email address.')),
+      );
+      return;
+    }
+
+    final AuthResult<void> result =
+        await AuthService().sendPasswordReset(email);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.success
+              ? 'Password reset link sent to $email. Check your inbox.'
+              : (result.error ?? 'Could not send reset email.'),
+        ),
+      ),
+    );
+  }
+}
+
+/// The "Reset Password" dialog body. Kept as its own [StatefulWidget] so the
+/// [TextEditingController] is created and disposed by Flutter alongside the
+/// dialog route — disposing it manually the moment the dialog closed crashed
+/// with a `_dependents.isEmpty` assertion while the TextField was still
+/// animating out. Pops with the trimmed email string, or null if cancelled.
+class _ForgotPasswordDialog extends StatefulWidget {
+  const _ForgotPasswordDialog({required this.initialEmail});
+
+  final String initialEmail;
+
+  @override
+  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialEmail);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.cardPurple,
+      title: const Text(
+        'Reset Password',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Enter your account email and we'll send you a link to reset "
+            'your password.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            keyboardType: TextInputType.emailAddress,
+            autofocus: true,
+            style: const TextStyle(color: Colors.white),
+            onSubmitted: (_) =>
+                Navigator.pop(context, _controller.text.trim()),
+            decoration: AppDecorations.darkInput(
+              'Email Address',
+              hint: 'Enter your email',
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(foregroundColor: AppColors.textMuted),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.orangeStart,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Send Link'),
+        ),
+      ],
+    );
+  }
 }

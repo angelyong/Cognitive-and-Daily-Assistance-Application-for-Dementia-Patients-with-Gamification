@@ -414,13 +414,47 @@ Future<List<Map<String, dynamic>>> getPatientsForCaregiver(
         .snapshots();
   }
 
-  /// Unlinks a patient from this caregiver by clearing their caregiverId.
-  /// This is a soft removal: the patient's account, tasks and history are
-  /// untouched — they just stop appearing in this caregiver's patient list
-  /// (deleting the Auth account outright would need the Admin SDK).
+  /// Unlinks a patient from the currently signed-in caregiver.
+  ///
+  /// This is a soft removal: the patient profile, Auth account, tasks, and
+  /// history remain stored. Only the caregiver relationship is removed. A
+  /// transaction makes the ownership check and unlink atomic, while the
+  /// explicit status/timestamp leave an auditable indication that the profile
+  /// was intentionally unlinked rather than created without a caregiver.
   Future<void> unlinkPatient(String patientUid) async {
-    await firestore.collection('users').doc(patientUid).update({
-      'caregiverId': FieldValue.delete(),
+    final String? caregiverId = FirebaseAuth.instance.currentUser?.uid;
+    if (caregiverId == null) {
+      throw StateError('No caregiver is signed in.');
+    }
+
+    final patientRef = firestore.collection('users').doc(patientUid);
+
+    await firestore.runTransaction((transaction) async {
+      final patientSnapshot = await transaction.get(patientRef);
+      if (!patientSnapshot.exists) {
+        throw StateError('Patient profile not found.');
+      }
+
+      final data = patientSnapshot.data() as Map<String, dynamic>;
+      if (data['role'] != 'patient') {
+        throw StateError('The selected account is not a patient.');
+      }
+      if (data['caregiverId'] != caregiverId) {
+        throw StateError('This patient is not linked to this caregiver.');
+      }
+
+      transaction.update(patientRef, {
+        'caregiverId': FieldValue.delete(),
+        'linkStatus': 'unlinked',
+        'unlinkedAt': FieldValue.serverTimestamp(),
+      });
     });
+
+    // Do not show a successful unlink in the UI unless the server confirms
+    // that the relationship field was actually removed.
+    final verified = await patientRef.get(const GetOptions(source: Source.server));
+    if (verified.data()?.containsKey('caregiverId') ?? false) {
+      throw StateError('Firestore did not remove the caregiver relationship.');
+    }
   }
 }
